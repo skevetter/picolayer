@@ -15,8 +15,13 @@ pub struct RunConfig<'a> {
     pub args: Vec<String>,
     pub working_dir: &'a str,
     pub env_vars: Vec<String>,
-    pub keep_package: bool,
-    pub keep_pkgx: bool,
+    pub delete: crate::DeleteOption,
+}
+
+struct PkgxBackup {
+    binaries: Vec<(PathBuf, Vec<u8>)>,
+    #[allow(dead_code)]
+    data_dirs: Vec<PathBuf>,
 }
 
 fn uninstall_pkgx() -> Result<()> {
@@ -116,45 +121,93 @@ fn get_platform_specific_paths() -> Result<Vec<PathBuf>> {
     Ok(paths)
 }
 
-pub fn execute(input: &RunConfig) -> Result<()> {
-    // TODO: Search the install directories for pkgx and cache existing file. Picolayer should not tamper
-    // with existing pkgx installs. After the run command completes, the cache should be restored.
-    // The rationale is the user may have pkgx installed before picolayer runs or wish to keep the
-    // pkgx cache present for subsequent executions. The plan is to replace the keep_package and keep_pkgx flags with
-    // a single --delete option with choices "package" or "pkgx" to uninstall only the package that was installed
-    // or the entire pkgx installation.
+/// Backup existing pkgx installation before we make any changes
+fn backup_existing_pkgx() -> Result<Option<PkgxBackup>> {
+    info!("Checking for existing pkgx installation...");
+    
+    let mut binaries = Vec::new();
+    let mut data_dirs = Vec::new();
+    
+    // Backup binary files
+    for bin_path_str in PKGX_BIN_PATHS {
+        let bin_path = PathBuf::from(bin_path_str);
+        if bin_path.exists() && bin_path.is_file() {
+            match std::fs::read(&bin_path) {
+                Ok(content) => {
+                    info!("Backing up existing binary: {}", bin_path.display());
+                    binaries.push((bin_path, content));
+                }
+                Err(e) => {
+                    warn!("Failed to backup {}: {}", bin_path.display(), e);
+                }
+            }
+        }
+    }
+    
+    // Check for existing data directories
+    if let Some(home_dir) = dirs_next::home_dir() {
+        let pkgx_home = home_dir.join(".pkgx");
+        if pkgx_home.exists() && pkgx_home.is_dir() {
+            info!("Found existing .pkgx directory: {}", pkgx_home.display());
+            data_dirs.push(pkgx_home);
+        }
+    }
+    
+    let platform_paths = get_platform_specific_paths()?;
+    for path in platform_paths {
+        if path.exists() && path.is_dir() {
+            info!("Found existing pkgx data directory: {}", path.display());
+            data_dirs.push(path);
+        }
+    }
+    
+    if binaries.is_empty() && data_dirs.is_empty() {
+        info!("No existing pkgx installation found");
+        Ok(None)
+    } else {
+        info!("Backed up {} binaries and found {} data directories", binaries.len(), data_dirs.len());
+        Ok(Some(PkgxBackup { binaries, data_dirs }))
+    }
+}
 
-    let _lock = crate::utils::locking::acquire_lock().context("Failed to acquire lock")?;
-    // TODO: Locking does not work correctly. Disabled for now.
-    // let _lock = {
-    //     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(300); // 5 minutes
-    //     loop {
-    //         match utils::locking::acquire_lock() {
-    //             Ok(lock) => break lock,
-    //             Err(e) => {
-    //                 if std::time::Instant::now() >= deadline {
-    //                     return Err(anyhow::anyhow!(
-    //                         "Failed to acquire lock within 5 minutes: {}",
-    //                         e
-    //                     ));
-    //                 }
-    //                 std::thread::sleep(std::time::Duration::from_millis(500));
-    //             }
-    //         }
-    //     }
-    // };
-    // Example errors
-    // - Failed to resolve package with libpkgx: Failed to install packages: No such file or directory (os error 2) at path "/home/vscode/.pkgx/python.org/.tmpA6vBNt"
-    // - Could not find platform independent libraries <prefix> Fatal Python error:
-    // - Failed to import encodings module ModuleNotFoundError: No module named 'encodings' pkgx library execution failed: Command failed with exit code: 1
-    //
-    // Test Failures:
-    // - test_picolayer_run_multiple_args
-    // - test_picolayer_run_node_version
-    // - test_picolayer_run_node_with_version_simple
-    // - test_picolayer_run_python_latest
-    // - test_picolayer_run_python_script
-    // - test_picolayer_run_python_version
+/// Restore pkgx installation from backup
+fn restore_pkgx_from_backup(backup: Option<PkgxBackup>) -> Result<()> {
+    if let Some(backup) = backup {
+        info!("Restoring pkgx from backup...");
+        
+        // Restore binaries
+        for (path, content) in backup.binaries {
+            match std::fs::write(&path, content) {
+                Ok(_) => {
+                    info!("Restored binary: {}", path.display());
+                    // Ensure the binary is executable
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::PermissionsExt;
+                        if let Ok(mut perms) = std::fs::metadata(&path).map(|m| m.permissions()) {
+                            perms.set_mode(0o755);
+                            let _ = std::fs::set_permissions(&path, perms);
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to restore {}: {}", path.display(), e);
+                }
+            }
+        }
+        
+        // Note: We don't restore data directories as they were just markers
+        // The actual data is preserved by not deleting them
+        info!("Pkgx restoration complete");
+    }
+    
+    Ok(())
+}
+
+pub fn execute(input: &RunConfig) -> Result<()> {
+    // Backup existing pkgx installation before making any changes
+    let pkgx_backup = backup_existing_pkgx()?;
+    let had_existing_pkgx = pkgx_backup.is_some();
 
     let working_path = Path::new(input.working_dir);
     if !working_path.exists() {
@@ -177,6 +230,9 @@ pub fn execute(input: &RunConfig) -> Result<()> {
         }
     }
 
+    // Determine whether to keep packages based on delete option
+    let keep_package = !matches!(input.delete, crate::DeleteOption::Package);
+
     let exec_result = if crate::utils::pkgx::check_pkgx_binary() {
         execute_with_pkgx_binary(
             &tool_name,
@@ -192,12 +248,30 @@ pub fn execute(input: &RunConfig) -> Result<()> {
             &input.args,
             working_path,
             &env_map,
-            input.keep_package,
+            keep_package,
         )
     };
 
-    if !input.keep_pkgx {
-        uninstall_pkgx()?;
+    // Handle cleanup based on delete option
+    match input.delete {
+        crate::DeleteOption::Pkgx => {
+            if had_existing_pkgx {
+                info!("Existing pkgx installation detected, restoring from backup instead of deleting");
+                restore_pkgx_from_backup(pkgx_backup)?;
+            } else {
+                info!("No existing pkgx found, proceeding with deletion");
+                uninstall_pkgx()?;
+            }
+        }
+        crate::DeleteOption::None => {
+            info!("Keeping all installations (both pkgx and packages)");
+            // If there was an existing pkgx, we don't need to do anything
+            // as we never deleted it in the first place
+        }
+        crate::DeleteOption::Package => {
+            // Packages are cleaned up within the execution functions
+            info!("Package cleanup handled during execution");
+        }
     }
 
     match exec_result {

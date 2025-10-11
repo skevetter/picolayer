@@ -283,8 +283,36 @@ fn test_run_with_env_vars() {
 
 #[test]
 #[serial]
-fn test_run_with_keep_pkgx() {
-    let output = run_picolayer(&["run", "--keep-pkgx", "bash@5.1", "-c", "echo 'hello world'"]);
+fn test_run_with_delete_none() {
+    let output = run_picolayer(&["run", "--delete", "none", "bash@5.1", "-c", "echo 'hello world'"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
+
+    assert!(stdout.contains("hello world"));
+}
+
+#[test]
+#[serial]
+fn test_run_with_delete_package() {
+    let output = run_picolayer(&["run", "--delete", "package", "python", "-c", "print('test')"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
+
+    assert!(stdout.contains("test"));
+}
+
+#[test]
+#[serial]
+fn test_run_with_delete_pkgx() {
+    let output = run_picolayer(&["run", "--delete", "pkgx", "bash@5.1", "-c", "echo 'hello world'"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
