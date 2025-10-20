@@ -1,0 +1,70 @@
+[package]
+name = "picolayer"
+version = "0.1.0"
+edition = "2024"
+authors = ["skevetter"]
+description = "A package installer and script runner that ensures minimal container layers"
+license = "MIT"
+repository = "https://github.com/skevetter/picolayer"
+
+[features]
+default = []
+
+# Use sudo to run tests that may require elevated privileges (https://github.com/rust-lang/cargo/issues/5999)
+# environment variable alternative: export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="sudo -E"
+# [target.x86_64-unknown-linux-gnu]
+# runner = 'sudo -E'
+
+[[bin]]
+name = "picolayer"
+path = "src/main.rs"
+
+[profile.release]
+strip = true
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[package.metadata.cargo-machete]
+ignored = []
+
+[target.'cfg(target_family = "unix")'.dependencies]
+libc = "0.2.177"
+
+[target.'cfg(all(target_os = "linux", target_arch = "aarch64"))'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
+
+[dependencies]
+anyhow = "1.0.100"
+clap = { version = "4.5.48", features = ["derive"] }
+env = "1.0.1"
+env_logger = "0.11"
+flate2 = "1.1.4"
+hex = "0.4.3"
+indicatif = "0.17"
+libpkgx = "0.7.0"
+log = "0.4"
+oci-client = "0.15.0"
+octocrab = "0.41.0"
+pgp = "0.17.0"
+regex = "1.11.3"
+reqwest = { version = "0.12.23", features = [
+    "json",
+    "rustls-tls-webpki-roots",
+], default-features = false }
+rusqlite = "0.33.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10.9"
+tar = "0.4.44"
+tempfile = "3.23.0"
+tokio = { version = "1.47.1", features = ["rt", "rt-multi-thread"] }
+walkdir = "2.5.0"
+which = "8.0.0"
+xz = "0.1.0"
+
+[dev-dependencies]
+chrono = "0.4"
+dirs-next = "2.0.0"
+serial_test = "3.2.0"

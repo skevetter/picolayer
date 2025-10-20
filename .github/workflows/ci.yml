@@ -1,0 +1,158 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_LOG: ${{ vars.RUST_LOG || 'info' }}
+  RUST_BACKTRACE: 1
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  linux-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Rust with caching
+        uses: ./.github/actions/setup-rust
+        with:
+          target: ${{ matrix.target }}
+
+      - name: Setup cross-compilation
+        uses: ./.github/actions/setup-cross-compile
+        with:
+          target: ${{ matrix.target }}
+
+      - name: Run check
+        run: cargo check --target ${{ matrix.target }} --verbose
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Build
+        run: cargo build --target ${{ matrix.target }} --release --verbose
+
+      - name: Check binary size
+        uses: ./.github/actions/check-binary-size
+        with:
+          target: ${{ matrix.target }}
+          os: linux
+
+  alpine-build:
+    needs: linux-build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        alpine-version: [v3.21]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Alpine Linux ${{ matrix.alpine-version }}
+        uses: jirutka/setup-alpine@v1
+        with:
+          arch: x86_64
+          branch: ${{ matrix.alpine-version }}
+          packages: >
+            build-base
+            curl
+            pkgconfig
+            openssl-dev
+            openssl-libs-static
+
+      - name: Setup Alpine Rust
+        uses: ./.github/actions/setup-alpine-rust
+
+      - name: Run check
+        run: |
+          source ~/.cargo/env
+          cargo check --verbose
+        shell: alpine.sh {0}
+
+      - name: Run tests
+        run: |
+          source ~/.cargo/env
+          cargo test --verbose
+        shell: alpine.sh --root {0}
+        env:
+          CARGO_TERM_COLOR: always
+          RUST_LOG: ${{ vars.RUST_LOG || 'info' }}
+          RUST_BACKTRACE: 1
+
+      - name: Build picolayer
+        run: |
+          source ~/.cargo/env
+          cargo build --release
+        shell: alpine.sh {0}
+        env:
+          CARGO_TERM_COLOR: always
+          RUST_LOG: ${{ vars.RUST_LOG || 'info' }}
+          RUST_BACKTRACE: 1
+
+      - name: Test APK functionality
+        run: |
+          source ~/.cargo/env
+
+          ./target/release/picolayer apk --help
+          ./target/release/picolayer apk git
+
+          which git
+          git --version
+
+          ./target/release/picolayer apk wget,tree
+
+          which wget
+          which tree
+          wget --version
+          tree --version
+        shell: alpine.sh --root {0}
+        env:
+          CARGO_TERM_COLOR: always
+          RUST_LOG: ${{ vars.RUST_LOG || 'info' }}
+          RUST_BACKTRACE: 1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check binary size
+        uses: ./.github/actions/check-binary-size
+        with:
+          os: alpine
+
+  macos-build:
+    needs: alpine-build
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target: [x86_64-apple-darwin, aarch64-apple-darwin]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Rust with caching
+        uses: ./.github/actions/setup-rust
+        with:
+          target: ${{ matrix.target }}
+
+      - name: Run check
+        run: cargo check --target ${{ matrix.target }} --verbose
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Build
+        run: cargo build --target ${{ matrix.target }} --release --verbose
+
+      - name: Check binary size
+        uses: ./.github/actions/check-binary-size
+        with:
+          target: ${{ matrix.target }}
+          os: macos

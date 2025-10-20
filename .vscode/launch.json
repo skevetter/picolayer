@@ -1,0 +1,141 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'picolayer'",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib", "--package=picolayer"],
+        "filter": {
+          "name": "picolayer",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'picolayer'",
+      "cargo": {
+        "args": ["build", "--bin=picolayer", "--package=picolayer"],
+        "filter": {
+          "name": "picolayer",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'picolayer'",
+      "cargo": {
+        "args": ["test", "--no-run", "--bin=picolayer", "--package=picolayer"],
+        "filter": {
+          "name": "picolayer",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration test 'apk_test'",
+      "cargo": {
+        "args": ["test", "--no-run", "--test=apk_test", "--package=picolayer"],
+        "filter": {
+          "name": "apk_test",
+          "kind": "test"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration test 'apt_get_test'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--test=apt_get_test",
+          "--package=picolayer"
+        ],
+        "filter": {
+          "name": "apt_get_test",
+          "kind": "test"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration test 'brew_test'",
+      "cargo": {
+        "args": ["test", "--no-run", "--test=brew_test", "--package=picolayer"],
+        "filter": {
+          "name": "brew_test",
+          "kind": "test"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration test 'gh_release_test'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--test=gh_release_test",
+          "--package=picolayer"
+        ],
+        "filter": {
+          "name": "gh_release_test",
+          "kind": "test"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration test 'main_test'",
+      "cargo": {
+        "args": ["test", "--no-run", "--test=main_test", "--package=picolayer"],
+        "filter": {
+          "name": "main_test",
+          "kind": "test"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration test 'run_test'",
+      "cargo": {
+        "args": ["test", "--no-run", "--test=run_test", "--package=picolayer"],
+        "filter": {
+          "name": "run_test",
+          "kind": "test"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+name: "Setup Alpine Rust"
+description: "Install Rust in Alpine Linux environment"
+runs:
+  using: "composite"
+  steps:
+    - name: Install Rust via rustup
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source ~/.cargo/env
+        rustup default stable
+      shell: alpine.sh {0}

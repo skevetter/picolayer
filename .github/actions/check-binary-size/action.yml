@@ -1,0 +1,40 @@
+name: "Check Binary Size"
+description: "Check picolayer binary size and fail if over 20MB"
+inputs:
+  target:
+    description: "Rust target triple (optional for single target builds)"
+    required: false
+  os:
+    description: "Operating system (linux, macos, alpine)"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Check binary size
+      run: |
+        if [ -n "${{ inputs.target }}" ]; then
+          BIN="target/${{ inputs.target }}/release/picolayer"
+        else
+          BIN="target/release/picolayer"
+        fi
+
+        echo "Binary path: $BIN"
+        if [ ! -f "$BIN" ]; then
+          echo "Binary not found, skipping size check."
+          exit 0
+        fi
+
+        if [[ "${{ inputs.os }}" == "macos" ]]; then
+          SIZE=$(stat -f%z "$BIN")
+        else
+          SIZE=$(stat -c%s "$BIN")
+        fi
+
+        MB_SIZE=$((SIZE / 1024 / 1024))
+        echo "Binary size: $MB_SIZE MB"
+
+        if [ "$SIZE" -gt 20000000 ]; then
+          echo "Warning: Binary size exceeds 20MB"
+          exit 1
+        fi
+      shell: ${{ inputs.os == 'alpine' && 'alpine.sh {0}' || 'bash' }}

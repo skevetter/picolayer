@@ -1,0 +1,22 @@
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+
+# Editor
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+node_modules
+
+# Test artifacts
+tests/artifacts/*.tar.xz
+tests/artifacts/*.asc
+
+megalinter-reports/
