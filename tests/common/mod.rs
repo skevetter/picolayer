@@ -68,6 +68,7 @@ pub fn run_picolayer_with_retry(args: &[&str]) -> std::process::Output {
 #[allow(dead_code)]
 pub fn is_transient_error(stderr: &str) -> bool {
     stderr.contains("403 Forbidden")
+        || stderr.contains("500 Internal Server Error")
         || stderr.contains("rate limit")
         || stderr.contains("API rate limit")
         || stderr.contains("connection")
