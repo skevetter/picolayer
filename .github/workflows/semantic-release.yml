@@ -19,5 +19,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: cycjimmy/semantic-release-action@v4
+        with:
+          extra_plugins: |
+            @semantic-release/exec
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
