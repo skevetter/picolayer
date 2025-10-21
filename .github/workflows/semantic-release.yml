@@ -4,8 +4,13 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
-  semantic-release:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -13,10 +18,6 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-node@v6
-
-      - run: npm ci
-
-      - run: npx semantic-release
+      - uses: cycjimmy/semantic-release-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
