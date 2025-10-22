@@ -3,11 +3,6 @@ use anyhow::{Context, Result};
 use log::info;
 
 pub fn install(packages: &[String]) -> Result<()> {
-    anyhow::ensure!(
-        utils::os::is_alpine(),
-        "apk should be used on Alpine Linux distribution"
-    );
-
     if std::process::Command::new("which")
         .arg("apk")
         .output()

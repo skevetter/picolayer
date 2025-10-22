@@ -1,4 +1,4 @@
-#![cfg(target_os = "linux")]
+#![cfg(all(target_os = "linux", not(target_env = "musl")))]
 
 use crate::common::{binary_exists, check_binary_version, run_picolayer, run_picolayer_with_retry};
 use serial_test::serial;
