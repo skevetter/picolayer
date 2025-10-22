@@ -1,6 +1,6 @@
 #![cfg(not(target_env = "musl"))]
 
-use crate::common::{run_picolayer, run_picolayer_with_retry};
+use crate::common::{run_picolayer, run_picolayer_with_retry, run_picolayer_with_retry_as_root};
 use serial_test::serial;
 
 #[test]
@@ -34,7 +34,7 @@ fn test_devcontainer_feature_invalid_reference() {
 #[test]
 #[serial]
 fn test_devcontainer_feature_bash_installation() {
-    let output = run_picolayer_with_retry(&[
+    let output = run_picolayer_with_retry_as_root(&[
         "devcontainer-feature",
         "ghcr.io/devcontainers-extra/features/bash-command:1",
         "--option",
@@ -61,7 +61,7 @@ fn test_devcontainer_feature_bash_installation() {
 #[test]
 #[serial]
 fn test_devcontainer_feature_black_installation() {
-    let output = run_picolayer_with_retry(&[
+    let output = run_picolayer_with_retry_as_root(&[
         "devcontainer-feature",
         "ghcr.io/devcontainers-extra/features/black:2",
     ]);
@@ -77,7 +77,7 @@ fn test_devcontainer_feature_black_installation() {
 #[test]
 #[serial]
 fn test_devcontainer_feature_with_options() {
-    let output = run_picolayer_with_retry(&[
+    let output = run_picolayer_with_retry_as_root(&[
         "devcontainer-feature",
         "ghcr.io/devcontainers/features/common-utils:2",
         "--option",
@@ -97,7 +97,7 @@ fn test_devcontainer_feature_with_options() {
 #[test]
 #[serial]
 fn test_devcontainer_feature_with_env_vars() {
-    let output = run_picolayer_with_retry(&[
+    let output = run_picolayer_with_retry_as_root(&[
         "devcontainer-feature",
         "ghcr.io/devcontainers/features/common-utils:2",
         "--env",
@@ -117,7 +117,7 @@ fn test_devcontainer_feature_with_env_vars() {
 #[test]
 #[serial]
 fn test_devcontainer_feature_custom_script() {
-    let output = run_picolayer_with_retry(&[
+    let output = run_picolayer_with_retry_as_root(&[
         "devcontainer-feature",
         "ghcr.io/devcontainers/features/common-utils:2",
         "--script",
