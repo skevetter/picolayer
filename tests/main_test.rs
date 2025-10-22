@@ -95,6 +95,7 @@ fn test_error_handling_github_not_found() {
 
 #[test]
 #[serial]
+#[cfg(all(target_os = "linux", not(target_env = "musl")))]
 fn test_error_handling_devcontainer_feature() {
     let output = run_picolayer(&["devcontainer-feature", "invalid-feature-reference-12345"]);
 
