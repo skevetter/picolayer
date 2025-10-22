@@ -43,8 +43,7 @@ pub fn run_picolayer_with_retry(args: &[&str]) -> std::process::Output {
 
         let stderr = String::from_utf8_lossy(&output.stderr);
         if !is_transient_error(&stderr) {
-            println!("Non-transient error detected, not retrying");
-            return output; // Non-transient error, don't retry
+            panic!("Non-transient error detected, not retrying");
         }
 
         if attempt < MAX_RETRIES - 1 {
