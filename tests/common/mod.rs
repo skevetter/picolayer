@@ -27,15 +27,56 @@ pub fn run_picolayer(args: &[&str]) -> std::process::Output {
     output
 }
 
+/// Run picolayer as root using sudo
+#[allow(dead_code)]
+pub fn run_picolayer_as_root(args: &[&str]) -> std::process::Output {
+    println!("=== Running picolayer with sudo and args: {:?} ===", args);
+
+    let mut cmd = std::process::Command::new("sudo");
+    cmd.arg(PICOLAYER_BIN);
+    cmd.args(args);
+
+    let output = cmd.output().expect("Failed to execute picolayer with sudo");
+
+    println!(
+        "Exit status: {} (code: {:?})",
+        if output.status.success() {
+            "SUCCESS"
+        } else {
+            "FAILED"
+        },
+        output.status.code()
+    );
+    println!("STDOUT:\n{}", String::from_utf8_lossy(&output.stdout));
+    println!("STDERR:\n{}", String::from_utf8_lossy(&output.stderr));
+    println!("=== End picolayer execution ===\n");
+
+    output
+}
+
 /// Run picolayer with retry and exponential backoff for transient errors
 #[allow(dead_code)]
 pub fn run_picolayer_with_retry(args: &[&str]) -> std::process::Output {
+    run_picolayer_with_retry_impl(args, false)
+}
+
+/// Run picolayer with sudo and retry for devcontainer features
+#[allow(dead_code)]
+pub fn run_picolayer_with_retry_as_root(args: &[&str]) -> std::process::Output {
+    run_picolayer_with_retry_impl(args, true)
+}
+
+fn run_picolayer_with_retry_impl(args: &[&str], use_sudo: bool) -> std::process::Output {
     const MAX_RETRIES: u32 = 5;
     const BASE_DELAY_MS: u64 = 5000;
 
     for attempt in 0..MAX_RETRIES {
         println!("=== Attempt {}/{} ===", attempt + 1, MAX_RETRIES);
-        let output = run_picolayer(args);
+        let output = if use_sudo {
+            run_picolayer_as_root(args)
+        } else {
+            run_picolayer(args)
+        };
 
         if output.status.success() {
             return output;
@@ -43,8 +84,7 @@ pub fn run_picolayer_with_retry(args: &[&str]) -> std::process::Output {
 
         let stderr = String::from_utf8_lossy(&output.stderr);
         if !is_transient_error(&stderr) {
-            println!("Non-transient error detected, not retrying");
-            return output; // Non-transient error, don't retry
+            panic!("Non-transient error detected, not retrying");
         }
 
         if attempt < MAX_RETRIES - 1 {
@@ -67,10 +107,9 @@ pub fn run_picolayer_with_retry(args: &[&str]) -> std::process::Output {
 /// Check if an error message indicates a transient error that should be retried or ignored
 #[allow(dead_code)]
 pub fn is_transient_error(stderr: &str) -> bool {
-    stderr.contains("403 Forbidden")
-        || stderr.contains("500 Internal Server Error")
+    stderr.contains("403")
+        || stderr.contains("500")
         || stderr.contains("rate limit")
-        || stderr.contains("API rate limit")
         || stderr.contains("connection")
         || stderr.contains("timeout")
         || stderr.contains("network")

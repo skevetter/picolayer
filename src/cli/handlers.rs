@@ -24,6 +24,10 @@ pub fn handle_command(command: Commands, retry_config: &RetryConfig) -> Result<(
         }
 
         Commands::Apt { packages, ppa_args } => {
+            anyhow::ensure!(
+                utils::os::is_debian_like(),
+                "apt command is only supported on Debian/Ubuntu systems. Use 'apk' on Alpine Linux."
+            );
             let pkg_list = normalize_package_list(&packages);
             let ppa_list = ppa_args.ppas.as_ref().map(|p| normalize_package_list(p));
 
@@ -37,6 +41,10 @@ pub fn handle_command(command: Commands, retry_config: &RetryConfig) -> Result<(
         }
 
         Commands::Aptitude { packages } => {
+            anyhow::ensure!(
+                utils::os::is_debian_like(),
+                "aptitude command is only supported on Debian/Ubuntu systems. Use 'apk' on Alpine Linux."
+            );
             let pkg_list = normalize_package_list(&packages);
             installers::package_manager::install_aptitude(&pkg_list)
         }
@@ -51,6 +59,10 @@ pub fn handle_command(command: Commands, retry_config: &RetryConfig) -> Result<(
         }
 
         Commands::Brew { packages } => {
+            anyhow::ensure!(
+                utils::os::is_macos(),
+                "brew command is only supported on macOS. Use 'apt-get' on Debian/Ubuntu or 'apk' on Alpine Linux."
+            );
             let pkg_list = normalize_package_list(&packages);
             installers::package_manager::install_brew(&pkg_list)
         }
@@ -76,6 +88,10 @@ pub fn handle_command(command: Commands, retry_config: &RetryConfig) -> Result<(
             registry_password,
             registry_token,
         } => {
+            anyhow::ensure!(
+                utils::os::is_linux(),
+                "devcontainer-feature command is only supported on Linux systems."
+            );
             let options = parse_key_value_pairs(&option);
             let envs = parse_key_value_pairs(&env);
 
@@ -110,6 +126,10 @@ pub fn handle_command(command: Commands, retry_config: &RetryConfig) -> Result<(
             gpg_key,
             include_prerelease,
         } => {
+            anyhow::ensure!(
+                utils::os::is_debian_like(),
+                "gh-release command is only supported on Debian/Ubuntu systems."
+            );
             let binary_list = normalize_package_list(&binary.unwrap_or_else(|| repo.clone()));
 
             let rt = tokio::runtime::Runtime::new()?;

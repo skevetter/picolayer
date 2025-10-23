@@ -9,8 +9,8 @@ const PPA_SUPPORT_PACKAGES_DEBIAN: &[&str] = &["python3-launchpadlib"];
 
 pub fn install(tool: &str, config: &PackageManagerConfig) -> Result<()> {
     anyhow::ensure!(
-        utils::os::is_debian_like() && which::which(tool).is_ok(),
-        "{} should be used on Debian-like distributions",
+        which::which(tool).is_ok(),
+        "{} command not found in PATH",
         tool
     );
 
@@ -36,11 +36,6 @@ pub fn install(tool: &str, config: &PackageManagerConfig) -> Result<()> {
 }
 
 pub fn install_aptitude(packages: &[String]) -> Result<()> {
-    anyhow::ensure!(
-        utils::os::is_debian_like(),
-        "aptitude should be used on Debian-like distributions"
-    );
-
     update_repositories()?;
     install_aptitude_tool()?;
     install_packages_aptitude(packages)?;

@@ -101,3 +101,13 @@ pub fn is_alpine() -> bool {
 pub fn is_debian() -> bool {
     matches!(detect_distro(), Ok(LinuxDistro::Debian))
 }
+
+/// Check if the system is macOS
+pub fn is_macos() -> bool {
+    std::env::consts::OS == "macos"
+}
+
+/// Check if the system is Linux
+pub fn is_linux() -> bool {
+    std::env::consts::OS == "linux"
+}

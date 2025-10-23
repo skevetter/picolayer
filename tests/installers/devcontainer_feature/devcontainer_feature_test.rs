@@ -1,6 +1,6 @@
-#![cfg(not(target_env = "musl"))]
+#![cfg(all(target_os = "linux", not(target_env = "musl")))]
 
-use crate::common::run_picolayer_with_retry;
+use crate::common::{run_picolayer, run_picolayer_with_retry, run_picolayer_with_retry_as_root};
 use serial_test::serial;
 
 #[test]
@@ -33,8 +33,51 @@ fn test_devcontainer_feature_invalid_reference() {
 
 #[test]
 #[serial]
+fn test_devcontainer_feature_bash_installation() {
+    let output = run_picolayer_with_retry_as_root(&[
+        "devcontainer-feature",
+        "ghcr.io/devcontainers-extra/features/bash-command:1",
+        "--option",
+        "command=echo 'test successful' > /tmp/bash_test.txt",
+    ]);
+
+    if let Ok(content) = std::fs::read_to_string("/tmp/bash_test.txt") {
+        assert_eq!(
+            content.trim(),
+            "test successful",
+            "Command should have executed successfully"
+        );
+    }
+    let _ = std::fs::remove_file("/tmp/bash_test.txt");
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "Feature installation should succeed: {}",
+        stderr
+    );
+}
+
+#[test]
+#[serial]
+fn test_devcontainer_feature_black_installation() {
+    let output = run_picolayer_with_retry_as_root(&[
+        "devcontainer-feature",
+        "ghcr.io/devcontainers-extra/features/black:2",
+    ]);
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "Feature installation should succeed: {}",
+        stderr
+    );
+}
+
+#[test]
+#[serial]
 fn test_devcontainer_feature_with_options() {
-    let output = run_picolayer_with_retry(&[
+    let output = run_picolayer_with_retry_as_root(&[
         "devcontainer-feature",
         "ghcr.io/devcontainers/features/common-utils:2",
         "--option",
@@ -43,11 +86,10 @@ fn test_devcontainer_feature_with_options() {
         "installOhMyZsh=false",
     ]);
 
-    // This test may fail due to network/registry issues, but should not crash
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        !stderr.contains("panic") && !stderr.contains("thread panicked"),
-        "Should not panic on feature installation: {}",
+        output.status.success(),
+        "Feature installation should succeed: {}",
         stderr
     );
 }
@@ -55,7 +97,7 @@ fn test_devcontainer_feature_with_options() {
 #[test]
 #[serial]
 fn test_devcontainer_feature_with_env_vars() {
-    let output = run_picolayer_with_retry(&[
+    let output = run_picolayer_with_retry_as_root(&[
         "devcontainer-feature",
         "ghcr.io/devcontainers/features/common-utils:2",
         "--env",
@@ -64,11 +106,10 @@ fn test_devcontainer_feature_with_env_vars() {
         "vscode",
     ]);
 
-    // This test may fail due to network/registry issues, but should not crash
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        !stderr.contains("panic") && !stderr.contains("thread panicked"),
-        "Should not panic with environment variables: {}",
+        output.status.success(),
+        "Feature installation should succeed: {}",
         stderr
     );
 }
@@ -76,7 +117,7 @@ fn test_devcontainer_feature_with_env_vars() {
 #[test]
 #[serial]
 fn test_devcontainer_feature_custom_script() {
-    let output = run_picolayer_with_retry(&[
+    let output = run_picolayer_with_retry_as_root(&[
         "devcontainer-feature",
         "ghcr.io/devcontainers/features/common-utils:2",
         "--script",
@@ -85,19 +126,16 @@ fn test_devcontainer_feature_custom_script() {
         "root",
     ]);
 
-    // This test may fail due to network/registry issues, but should not crash
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        !stderr.contains("panic") && !stderr.contains("thread panicked"),
-        "Should not panic with custom script: {}",
+        output.status.success(),
+        "Feature installation should succeed: {}",
         stderr
     );
 }
 #[test]
 #[serial]
 fn test_devcontainer_feature_retry_functionality() {
-    use crate::common::run_picolayer;
-
     let output = run_picolayer(&[
         "--max-retries",
         "1",
@@ -110,14 +148,11 @@ fn test_devcontainer_feature_retry_functionality() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    // Should show retry attempts in the logs
     assert!(
         stderr.contains("failed (attempt 1/2)") || stderr.contains("retrying in 100ms"),
         "Should show retry attempts in logs: {}",
         stderr
     );
-
-    // Should eventually fail after retries
     assert!(
         stderr.contains("failed after 2 attempts") || stderr.contains("Error:"),
         "Should show final failure after retries: {}",
@@ -127,21 +162,17 @@ fn test_devcontainer_feature_retry_functionality() {
 #[test]
 #[serial]
 fn test_devcontainer_feature_no_retry_by_default() {
-    use crate::common::run_picolayer;
-
     let output = run_picolayer(&["devcontainer-feature", "invalid-no-retry-test-reference"]);
 
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    // Should NOT show retry attempts (no retries by default)
     assert!(
         !stderr.contains("retrying") && !stderr.contains("attempt"),
         "Should not show retry attempts by default: {}",
         stderr
     );
 
-    // Should fail immediately
     assert!(
         stderr.contains("Error:"),
         "Should show error without retries: {}",

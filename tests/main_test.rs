@@ -69,6 +69,7 @@ fn test_run_help() {
 
 #[test]
 #[serial]
+#[cfg(all(target_os = "linux", not(target_env = "musl")))]
 fn test_error_handling_github_not_found() {
     let output = run_picolayer(&[
         "gh-release",
@@ -85,7 +86,6 @@ fn test_error_handling_github_not_found() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    // Should show user-friendly error message
     assert!(
         stderr.contains("Repository not found or not accessible"),
         "Should show user-friendly GitHub error: {}",
@@ -95,13 +95,13 @@ fn test_error_handling_github_not_found() {
 
 #[test]
 #[serial]
+#[cfg(all(target_os = "linux", not(target_env = "musl")))]
 fn test_error_handling_devcontainer_feature() {
     let output = run_picolayer(&["devcontainer-feature", "invalid-feature-reference-12345"]);
 
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    // Should show user-friendly error message
     assert!(
         stderr.contains("Failed to download container feature"),
         "Should show user-friendly devcontainer feature error: {}",
@@ -117,7 +117,6 @@ fn test_error_handling_shows_debug_hint() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    // Should not show debug hint for known error types
     assert!(
         !stderr.contains("For technical details, set PICOLAYER_DEBUG=1"),
         "Should not show debug hint for known errors: {}",
