@@ -150,7 +150,15 @@ fn extract_tar_gz(
             .unwrap_or("")
             .to_string();
 
-        if binary_names.iter().any(|name| name == &file_name) {
+        log::debug!(
+            "Processing entry: {} (type: {:?})",
+            path.display(),
+            entry.header().entry_type()
+        );
+        if entry.header().entry_type().is_file()
+            && binary_names.iter().any(|name| name == &file_name)
+        {
+            log::debug!("Found matching binary: {} -> {}", file_name, path.display());
             install_binary(&mut entry, &file_name, bin_location)?;
         }
     }
