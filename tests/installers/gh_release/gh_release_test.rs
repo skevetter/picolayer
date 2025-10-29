@@ -590,6 +590,7 @@ fn test_opam_gpg_signature_verification() {
         "opam binary version check failed"
     );
 }
+
 #[test]
 #[serial]
 fn test_opam_automatic_platform_detection() {
@@ -622,5 +623,39 @@ fn test_opam_automatic_platform_detection() {
     assert!(
         check_binary_version(&binary_path, Some("2.4")),
         "opam binary version check failed"
+    );
+}
+
+#[test]
+#[serial]
+fn test_neovim_installation() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+    let bin_location = temp_dir.path().to_str().unwrap();
+
+    let output = run_picolayer(&[
+        "gh-release",
+        "--owner",
+        "neovim",
+        "--repo",
+        "neovim",
+        "--binary",
+        "nvim",
+        "--filter",
+        "nvim-linux-x86_64\\.tar\\.gz$",
+        "--install-dir",
+        bin_location,
+    ]);
+
+    assert!(
+        output.status.success(),
+        "install failed {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let binary_path = format!("{}/nvim", bin_location);
+    assert!(
+        binary_exists(&binary_path),
+        "binary was not installed at {}",
+        binary_path
     );
 }
