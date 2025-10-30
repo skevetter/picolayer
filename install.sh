@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Picolayer installer script
-# Usage: curl -fsSL  https://raw.githubusercontent.com/skevetter/picolayer/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/skevetter/picolayer/main/install.sh | bash
 
 set -eo pipefail
 
