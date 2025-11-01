@@ -3,19 +3,47 @@ name: Release
 on:
   push:
     branches: [main]
-    tags: ["v*"]
-  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 jobs:
+  semantic-release:
+    runs-on: ubuntu-latest
+    outputs:
+      new-release-published: ${{ steps.semantic.outputs.new-release-published }}
+      new-release-version: ${{ steps.semantic.outputs.new-release-version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          extra_plugins: |
+            @semantic-release/exec
+            @semantic-release/git
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build:
-    if: startsWith(github.ref, 'refs/tags/')
+    needs: semantic-release
+    if: needs.semantic-release.outputs.new-release-published == 'true'
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -32,6 +60,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: v${{ needs.semantic-release.outputs.new-release-version }}
 
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
@@ -66,14 +96,12 @@ jobs:
           name: picolayer-${{ matrix.target }}
           path: picolayer-${{ matrix.target }}.tar.gz
 
-  release:
+  upload-assets:
     name: Upload Release Assets
-    needs: [build]
+    needs: [semantic-release, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: needs.semantic-release.outputs.new-release-published == 'true'
     steps:
-      - uses: actions/checkout@v5
-
       - name: Download artifacts
         uses: actions/download-artifact@v5
         with:
@@ -82,6 +110,7 @@ jobs:
       - name: Upload binaries to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ needs.semantic-release.outputs.new-release-version }}
           files: artifacts/*/picolayer-*.tar.gz
           fail_on_unmatched_files: true
         env:
