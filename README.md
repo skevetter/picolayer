@@ -1,6 +1,6 @@
 # Picolayer
 
-A utility tool that keeps container layers small by cleaning up installation leftovers such as apt-get update lists, caches, and temporary files. Picolayer can install packages using package managers, install executables from GitHub releases, run [devcontainer-features](https://containers.dev/implementors/features/), and run programming languages with [pkgx](https://docs.pkgx.sh/pkgx/pkgx).
+A utility tool that keeps container layers small by cleaning installation leftovers such as apt lists, caches, and temporary files. Picolayer can install packages using package managers, install executables from GitHub releases, run [devcontainer-features](https://containers.dev/implementors/features/), and run programming languages with [pkgx](https://docs.pkgx.sh/pkgx/pkgx).
 
 This project is inspired by [nanolayer](https://github.com/devcontainers-extra/nanolayer).
 
