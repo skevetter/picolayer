@@ -659,3 +659,41 @@ fn test_neovim_installation() {
         binary_path
     );
 }
+
+#[test]
+#[serial]
+fn test_uv_uvx_multiple_binary_installation() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+    let bin_location = temp_dir.path().to_str().unwrap();
+
+    let output = run_picolayer(&[
+        "gh-release",
+        "--owner",
+        "astral-sh",
+        "--repo",
+        "uv",
+        "--binary",
+        "uv,uvx",
+        "--install-dir",
+        bin_location,
+    ]);
+
+    assert!(
+        output.status.success(),
+        "install failed {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let binary_path = format!("{}/uv", bin_location);
+    assert!(
+        binary_exists(&binary_path),
+        "binary was not installed at {}",
+        binary_path
+    );
+    let binary_path_uvx = format!("{}/uvx", bin_location);
+    assert!(
+        binary_exists(&binary_path_uvx),
+        "binary was not installed at {}",
+        binary_path_uvx
+    );
+}
