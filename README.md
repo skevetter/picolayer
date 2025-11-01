@@ -1,8 +1,20 @@
 # Picolayer
 
-A utility tool that helps keep container layers as small as possible by automatically cleaning up installation leftovers such as apt-get update lists, caches, and temporary files. Picolayer can run any programming language, devcontainer-feature, or install any GitHub release with ease.
+A utility tool that keeps container layers small by cleaning up installation leftovers such as apt-get update lists, caches, and temporary files. Picolayer can install packages using package managers, install executables from GitHub releases, run [devcontainer-features](https://containers.dev/implementors/features/), and run programming languages with [pkgx](https://docs.pkgx.sh/pkgx/pkgx).
 
 This project is inspired by [nanolayer](https://github.com/devcontainers-extra/nanolayer).
+
+## Devcontainer Feature Integration
+
+Refer to these examples to integrate the [Picolayer feature](https://github.com/skevetter/features/pkgs/container/features%2Fpicolayer) with existing devcontainer feature builds:
+
+| Feature                                                                           | Description                                                |
+|-----------------------------------------------------------------------------------|------------------------------------------------------------|
+| [pkgx](https://github.com/skevetter/features/blob/main/src/pkgx/install.sh)       | Installs from GitHub repository with checksum verification |
+| [Lazygit](https://github.com/skevetter/features/blob/main/src/lazygit/install.sh) | Installs from a GitHub repository                          |
+| [Neovim](https://github.com/skevetter/features/blob/main/src/neovim/install.sh)   | Installs from a GitHub repository with asset tag filtering |
+| [Biome](https://github.com/skevetter/features/blob/main/src/biome/install.sh)     | Installs a NPM package                                     |
+| [UV](https://github.com/skevetter/features/blob/main/src/uv/install.sh)           | Installs multiple binaries from a GitHub repository        |
 
 ## Commands
 
