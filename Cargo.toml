@@ -1,6 +1,6 @@
 [package]
 name = "picolayer"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2024"
 authors = ["skevetter"]
 description = "A package installer and script runner that ensures minimal container layers"
