@@ -29,8 +29,6 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
-          git_committer_name: ${{ vars.GIT_COMMITER_NAME }}
-          git_committer_email: ${{ vars.GIT_COMMITER_EMAIL }}
           git_user_signingkey: true
           git_commit_gpgsign: true
 
@@ -42,6 +40,8 @@ jobs:
             @semantic-release/git
         env:
           GITHUB_TOKEN: ${{ secrets.WORKFLOWS_PAT }}
+          GIT_COMMITTER_NAME: ${{ vars.GIT_COMMITER_NAME }}
+          GIT_COMMITTER_EMAIL: ${{ vars.GIT_COMMITER_EMAIL }}
 
   build:
     needs: semantic-release
