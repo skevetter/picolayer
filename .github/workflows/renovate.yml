@@ -1,0 +1,41 @@
+name: Renovate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 18 * * *" # At 18:00 UTC daily
+
+jobs:
+  renovate:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: bitwarden/sm-action@v2
+        with:
+          access_token: ${{ secrets.BITWARDEN_SECRETS_ACCESS_TOKEN }}
+          secrets: |
+            ${{ secrets.RENOVATE_TOKEN_UUID }} > RENOVATE_TOKEN
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - uses: renovatebot/github-action@v43.0.10
+        with:
+          token: ${{ env.RENOVATE_TOKEN }}
+        env:
+          RENOVATE_REPOSITORIES: "${{ github.repository }}"
+          RENOVATE_CONFIG_FILE: "renovate.json"
+          LOG_LEVEL: ${{ vars.LOG_LEVEL || 'info' }}
+          RENOVATE_GIT_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          # NOTE: Try using ghaction-import-gpg to import and decrypt the GPG key first due to
+          # renovate not supporting GPG keys natively.
+          # "Currently supported for SSH keys only. When provided, Renovate will
+          # automatically decrypt the SSH private key during the signing process."
+          # https://docs.renovatebot.com/self-hosted-configuration/#gitprivatekeypassphrase
+          RENOVATE_GIT_PRIVATE_KEY_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
