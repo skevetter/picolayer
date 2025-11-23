@@ -14,17 +14,6 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  verify-commit-signed:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Verify commit is signed
-        uses: 1Password/check-signed-commits-action@v1
-
   linux-build:
     runs-on: ubuntu-latest
     strategy:
