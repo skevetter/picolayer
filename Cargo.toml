@@ -53,7 +53,7 @@ reqwest = { version = "0.12.23", features = [
     "json",
     "rustls-tls-webpki-roots",
 ], default-features = false }
-rusqlite = "0.33.0"
+rusqlite = "0.37.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.10.9"
