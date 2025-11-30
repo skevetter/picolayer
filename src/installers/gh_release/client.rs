@@ -88,6 +88,7 @@ mod tests {
             tarball_url: Some("https://example.com/tarball".parse().unwrap()),
             zipball_url: Some("https://example.com/zipball".parse().unwrap()),
             url: "https://example.com/release".parse().unwrap(),
+            immutable: None,
         }
     }
 

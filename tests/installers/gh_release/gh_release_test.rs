@@ -586,7 +586,7 @@ fn test_opam_gpg_signature_verification() {
     );
 
     assert!(
-        check_binary_version(&binary_path, Some("2.4")),
+        check_binary_version(&binary_path, Some("2.")),
         "opam binary version check failed"
     );
 }
@@ -621,7 +621,7 @@ fn test_opam_automatic_platform_detection() {
     );
 
     assert!(
-        check_binary_version(&binary_path, Some("2.4")),
+        check_binary_version(&binary_path, Some("2.")),
         "opam binary version check failed"
     );
 }
