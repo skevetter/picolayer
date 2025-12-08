@@ -19,10 +19,17 @@ jobs:
       new-release-published: ${{ steps.semantic.outputs.new_release_published }}
       new-release-version: ${{ steps.semantic.outputs.new_release_version }}
     steps:
+      - name: bitwarden secrets
+        uses: bitwarden/sm-action@v2
+        with:
+          access_token: ${{ secrets.BITWARDEN_SECRETS_ACCESS_TOKEN }}
+          secrets: |
+            ${{ secrets.WORKFLOWS_PAT_UUID }} > WORKFLOWS_PAT
+
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.WORKFLOWS_PAT }}
+          token: ${{ env.WORKFLOWS_PAT }}
 
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
@@ -39,7 +46,7 @@ jobs:
             @semantic-release/exec
             @semantic-release/git
         env:
-          GITHUB_TOKEN: ${{ secrets.WORKFLOWS_PAT }}
+          GITHUB_TOKEN: ${{ env.WORKFLOWS_PAT }}
           GIT_COMMITTER_NAME: ${{ vars.GIT_COMMITER_NAME }}
           GIT_COMMITTER_EMAIL: ${{ vars.GIT_COMMITER_EMAIL }}
 
