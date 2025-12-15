@@ -21,7 +21,7 @@ jobs:
         target: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Rust with caching
         uses: ./.github/actions/setup-rust
@@ -56,7 +56,7 @@ jobs:
         alpine-version: [v3.21]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Alpine Linux ${{ matrix.alpine-version }}
         uses: jirutka/setup-alpine@v1
@@ -135,7 +135,7 @@ jobs:
         target: [x86_64-apple-darwin, aarch64-apple-darwin]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Rust with caching
         uses: ./.github/actions/setup-rust

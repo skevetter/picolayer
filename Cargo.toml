@@ -1,6 +1,6 @@
 [package]
 name = "picolayer"
-version = "0.2.5"
+version = "0.2.7"
 edition = "2024"
 authors = ["skevetter"]
 description = "A package installer and script runner that ensures minimal container layers"
@@ -46,8 +46,8 @@ indicatif = "0.18"
 libpkgx = "0.7.0"
 log = "0.4"
 oci-client = "0.15.0"
-octocrab = "0.46.0"
-pgp = "0.17.0"
+octocrab = "0.48.0"
+pgp = "0.18.0"
 regex = "1.11.3"
 reqwest = { version = "0.12.23", features = [
     "json",
