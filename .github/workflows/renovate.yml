@@ -25,7 +25,7 @@ jobs:
           git_user_signingkey: true
           git_commit_gpgsign: true
 
-      - uses: renovatebot/github-action@v45.0.0
+      - uses: renovatebot/github-action@v45.0.3
         with:
           token: ${{ env.RENOVATE_TOKEN }}
         env:
