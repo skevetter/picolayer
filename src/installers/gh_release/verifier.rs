@@ -75,6 +75,49 @@ fn find_signature_asset<'a>(assets: &'a [Asset], asset: &Asset) -> Option<&'a As
     assets.iter().find(|a| exact_patterns.contains(&a.name))
 }
 
+/// Returns an alternative asset that shares the same base name as `asset` but
+/// has a direct GPG signature file available.  Returns `None` if the original
+/// asset already has a signature or if no signed variant exists.
+pub(super) fn find_signed_variant<'a>(assets: &'a [Asset], asset: &'a Asset) -> Option<&'a Asset> {
+    // If the asset already has a direct signature, no variant is needed.
+    if find_signature_asset(assets, asset).is_some() {
+        return None;
+    }
+
+    let base_name = get_asset_base_name(&asset.name);
+    // Only look for variants if the asset actually has a compression extension.
+    if base_name == asset.name.as_str() {
+        return None;
+    }
+
+    assets.iter().find(|candidate| {
+        // Skip the original asset itself.
+        if candidate.name == asset.name {
+            return false;
+        }
+        // The candidate must share the same base name (i.e. same content, different compression).
+        let candidate_base = get_asset_base_name(&candidate.name);
+        if candidate_base != base_name {
+            return false;
+        }
+        // The candidate must have a signature file.
+        find_signature_asset(assets, candidate).is_some()
+    })
+}
+
+fn get_asset_base_name(filename: &str) -> &str {
+    const COMPRESSION_EXTENSIONS: &[&str] = &[
+        ".tar.gz", ".tgz", ".tar.xz", ".txz", ".tar.bz2", ".tbz2", ".tar.Z", ".tar.lz",
+        ".tar.lzma", ".zip", ".gz", ".xz", ".bz2", ".Z", ".lz", ".lzma",
+    ];
+    for ext in COMPRESSION_EXTENSIONS {
+        if filename.ends_with(ext) {
+            return &filename[..filename.len() - ext.len()];
+        }
+    }
+    filename
+}
+
 fn find_checksum_asset<'a>(assets: &'a [Asset], asset: &Asset) -> Result<&'a Asset> {
     let patterns = build_checksum_patterns(&asset.name);
 

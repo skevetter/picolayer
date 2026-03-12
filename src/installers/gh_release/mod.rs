@@ -39,8 +39,21 @@ pub async fn install(
     info!("Installing from release: {}", release.tag_name);
 
     let selector = selector::create_selector(config.filter);
-    let asset = selector.select(&release.assets)?;
-    info!("Selected asset: {}", asset.name);
+    let selected = selector.select(&release.assets)?;
+    info!("Selected asset: {}", selected.name);
+
+    // When verification is requested and no explicit checksum text is provided,
+    // prefer a signed variant if the selected asset has no direct signature.
+    let asset = if config.verify_checksum && config.checksum_text.is_none() {
+        if let Some(signed_variant) = verifier::find_signed_variant(&release.assets, selected) {
+            info!("Using signed variant for verification: {}", signed_variant.name);
+            signed_variant
+        } else {
+            selected
+        }
+    } else {
+        selected
+    };
 
     if let Some(checksum_text) = config.checksum_text {
         verifier::verify_with_checksum_text(asset, checksum_text).await?;
