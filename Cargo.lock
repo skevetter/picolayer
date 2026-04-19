@@ -2603,6 +2603,7 @@ dependencies = [
  "dirs-next",
  "env_logger",
  "flate2",
+ "futures-util",
  "hex",
  "indicatif",
  "libc",
