@@ -1,5 +1,5 @@
 use crate::utils;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use log::info;
 
 pub(super) fn install(packages: &[String]) -> Result<()> {
@@ -21,28 +21,24 @@ pub(super) fn install(packages: &[String]) -> Result<()> {
 
 fn update_repositories() -> Result<()> {
     info!("Updating apk repositories");
-    utils::sudo::command("apk")
-        .args(["update"])
-        .output()
-        .context("Failed to update apk repositories")?;
+    let mut cmd = utils::sudo::command("apk");
+    cmd.args(["update"]);
+    utils::subprocess::run_command(&mut cmd, "Update apk repositories")?;
     Ok(())
 }
 
 fn install_packages(packages: &[String]) -> Result<()> {
     info!("Installing apk packages: {:?}", packages);
-    utils::sudo::command("apk")
-        .args(["add", "--no-cache"])
-        .args(packages)
-        .output()
-        .context("Failed to install apk packages")?;
+    let mut cmd = utils::sudo::command("apk");
+    cmd.args(["add", "--no-cache"]).args(packages);
+    utils::subprocess::run_command(&mut cmd, "Install apk packages")?;
     Ok(())
 }
 
 fn cleanup() -> Result<()> {
     info!("Cleaning up apk cache");
-    utils::sudo::command("apk")
-        .args(["cache", "clean"])
-        .output()
-        .context("Failed to clean apk cache")?;
+    let mut cmd = utils::sudo::command("apk");
+    cmd.args(["cache", "clean"]);
+    utils::subprocess::run_command(&mut cmd, "Clean apk cache")?;
     Ok(())
 }

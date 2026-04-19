@@ -1,5 +1,5 @@
 use crate::utils;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use log::{debug, info};
 use std::process::Command;
 
@@ -32,30 +32,26 @@ fn install_pipx() -> Result<()> {
 
 fn install_pipx_debian() -> Result<()> {
     debug!("Installing pipx on Debian-like system");
-    utils::sudo::command("apt-get")
-        .args(["update"])
-        .output()
-        .context("Failed to update package lists")?;
+    let mut cmd = utils::sudo::command("apt-get");
+    cmd.args(["update"]);
+    utils::subprocess::run_command(&mut cmd, "Update package lists")?;
 
-    utils::sudo::command("apt-get")
-        .args(["install", "-y", "pipx"])
-        .output()
-        .context("Failed to install pipx")?;
+    let mut cmd = utils::sudo::command("apt-get");
+    cmd.args(["install", "-y", "pipx"]);
+    utils::subprocess::run_command(&mut cmd, "Install pipx")?;
 
     Ok(())
 }
 
 fn install_pipx_alpine() -> Result<()> {
     debug!("Installing pipx on Alpine Linux");
-    utils::sudo::command("apk")
-        .args(["add", "py3-pip", "python3"])
-        .output()
-        .context("Failed to install Python and pip")?;
+    let mut cmd = utils::sudo::command("apk");
+    cmd.args(["add", "py3-pip", "python3"]);
+    utils::subprocess::run_command(&mut cmd, "Install Python and pip")?;
 
-    Command::new("pip3")
-        .args(["install", "--user", "pipx"])
-        .output()
-        .context("Failed to install pipx via pip")?;
+    let mut cmd = Command::new("pip3");
+    cmd.args(["install", "--user", "pipx"]);
+    utils::subprocess::run_command(&mut cmd, "Install pipx via pip")?;
 
     Ok(())
 }
@@ -71,8 +67,7 @@ fn install_packages(packages: &[String], python_version: Option<&str>) -> Result
             cmd.args(["--python", version]);
         }
 
-        cmd.output()
-            .with_context(|| format!("Failed to install pipx package: {}", package))?;
+        utils::subprocess::run_command(&mut cmd, &format!("Install pipx package: {}", package))?;
     }
 
     info!("Successfully installed pipx packages: {:?}", packages);

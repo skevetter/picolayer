@@ -1,5 +1,5 @@
 use crate::utils;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use log::{debug, info};
 use std::process::Command;
 
@@ -32,25 +32,22 @@ fn install_nodejs() -> Result<()> {
 
 fn install_nodejs_debian() -> Result<()> {
     debug!("Installing Node.js on Debian-like system");
-    utils::sudo::command("apt-get")
-        .args(["update"])
-        .output()
-        .context("Failed to update package lists")?;
+    let mut cmd = utils::sudo::command("apt-get");
+    cmd.args(["update"]);
+    utils::subprocess::run_command(&mut cmd, "Update package lists")?;
 
-    utils::sudo::command("apt-get")
-        .args(["install", "-y", "nodejs", "npm"])
-        .output()
-        .context("Failed to install Node.js and npm")?;
+    let mut cmd = utils::sudo::command("apt-get");
+    cmd.args(["install", "-y", "nodejs", "npm"]);
+    utils::subprocess::run_command(&mut cmd, "Install Node.js and npm")?;
 
     Ok(())
 }
 
 fn install_nodejs_alpine() -> Result<()> {
     debug!("Installing Node.js on Alpine Linux");
-    utils::sudo::command("apk")
-        .args(["add", "nodejs", "npm"])
-        .output()
-        .context("Failed to install Node.js and npm")?;
+    let mut cmd = utils::sudo::command("apk");
+    cmd.args(["add", "nodejs", "npm"]);
+    utils::subprocess::run_command(&mut cmd, "Install Node.js and npm")?;
 
     Ok(())
 }
@@ -61,8 +58,7 @@ fn install_packages(packages: &[String]) -> Result<()> {
     let mut cmd = Command::new("npm");
     cmd.args(["install", "-g"]);
     cmd.args(packages);
-
-    cmd.output().context("Failed to install npm packages")?;
+    utils::subprocess::run_command(&mut cmd, "Install npm packages")?;
 
     info!("Successfully installed npm packages: {:?}", packages);
     Ok(())
