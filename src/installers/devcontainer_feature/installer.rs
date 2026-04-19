@@ -247,8 +247,9 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn get_home_dir_for_user_returns_some_for_root() {
-        // root should exist on all Unix systems
+        // root should exist on all Linux systems; getent is not available on macOS
         let result = get_home_dir_for_user("root");
         assert!(result.is_some());
         let home = result.unwrap();
