@@ -311,7 +311,7 @@ fn find_and_install_binaries(
             if binary_names.iter().any(|name| name == &file_name) {
                 // Skip zero-byte files
                 if entry.metadata()?.len() == 0 {
-                    log::warn!("Skipping zero-byte file: {}", file_name);
+                    log::debug!("Skipping zero-byte file: {}", file_name);
                     continue;
                 }
 

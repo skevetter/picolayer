@@ -16,8 +16,7 @@ pub(super) fn install(tool: &str, config: &PackageManagerConfig) -> Result<()> {
 
     let mut ppas = config.ppas.map(|p| p.to_vec()).unwrap_or_default();
     if !ppas.is_empty() && !utils::os::is_ubuntu() && !config.force_ppas_on_non_ubuntu {
-        warn!("PPAs are ignored on non-Ubuntu distros!");
-        info!("Use --force-ppas-on-non-ubuntu to include them anyway.");
+        warn!("PPAs are ignored on non-Ubuntu distros. Use --force-ppas-on-non-ubuntu to include them anyway.");
         ppas.clear();
     }
 

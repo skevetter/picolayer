@@ -3,7 +3,7 @@ use libpkgx::config::Config;
 use libpkgx::{
     hydrate, install_multi::ProgressBarExt, pantry_db, resolve, sync, types::PackageReq,
 };
-use log::{info, warn};
+use log::{debug, info, warn};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -65,7 +65,7 @@ async fn resolve_dependencies_async(
         match PackageReq::parse(dep) {
             Ok(req) => package_reqs.push(req),
             Err(e) => {
-                eprintln!("Warning: Failed to parse dependency {}: {}", dep, e);
+                warn!("Failed to parse dependency {}: {}", dep, e);
                 continue;
             }
         }
@@ -130,14 +130,14 @@ fn map_tool_to_project(tool_name: &str, conn: &rusqlite::Connection) -> Result<S
             }
         }
         Ok(_) => {
-            warn!(
+            debug!(
                 "No project found for tool '{}' in pantry database, using tool name as project",
                 tool_name
             );
             Ok(tool_name.to_string())
         }
         Err(e) => {
-            warn!(
+            debug!(
                 "Failed to query pantry database for tool '{}': {}, using tool name as project",
                 tool_name, e
             );
