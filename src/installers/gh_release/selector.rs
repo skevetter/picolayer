@@ -7,21 +7,21 @@ pub trait AssetSelector {
 }
 
 pub struct FilterSelector {
-    pattern: String,
+    regex: Regex,
 }
 
 impl FilterSelector {
-    pub fn new(pattern: String) -> Self {
-        Self { pattern }
+    pub fn new(pattern: &str) -> Result<Self> {
+        let regex = Regex::new(pattern).context("Invalid filter pattern")?;
+        Ok(Self { regex })
     }
 }
 
 impl AssetSelector for FilterSelector {
     fn select<'a>(&self, assets: &'a [Asset]) -> Result<&'a Asset> {
-        let regex = Regex::new(&self.pattern).context("Invalid filter pattern")?;
         assets
             .iter()
-            .find(|a| regex.is_match(&a.name) && !is_signature_file(&a.name))
+            .find(|a| self.regex.is_match(&a.name) && !is_signature_file(&a.name))
             .context("No asset matching filter pattern")
     }
 }
@@ -36,10 +36,10 @@ impl AssetSelector for PlatformSelector {
     }
 }
 
-pub fn create_selector(filter: Option<&str>) -> Box<dyn AssetSelector> {
+pub fn create_selector(filter: Option<&str>) -> Result<Box<dyn AssetSelector>> {
     match filter {
-        Some(pattern) => Box::new(FilterSelector::new(pattern.to_string())),
-        None => Box::new(PlatformSelector),
+        Some(pattern) => Ok(Box::new(FilterSelector::new(pattern)?)),
+        None => Ok(Box::new(PlatformSelector)),
     }
 }
 
@@ -54,16 +54,18 @@ fn select_by_platform(assets: &[Asset]) -> Option<&Asset> {
         let name = &asset.name;
         let has_arch = arch_regex.is_match(name);
         let has_os = os_regex.is_match(name);
-        let is_archive_or_binary = is_archive(&name.to_lowercase()) || is_platform_binary(name);
+        let lower = name.to_lowercase();
+        let is_archive_or_binary = is_archive(&lower) || is_platform_binary(&lower);
 
         has_arch && has_os && is_archive_or_binary
     })
 }
 
 fn select_any_archive(assets: &[Asset]) -> Option<&Asset> {
-    assets
-        .iter()
-        .find(|a| is_archive(&a.name.to_lowercase()) || is_platform_binary(&a.name))
+    assets.iter().find(|a| {
+        let lower = a.name.to_lowercase();
+        is_archive(&lower) || is_platform_binary(&lower)
+    })
 }
 
 fn get_arch_regex(arch: &str) -> Option<Regex> {
@@ -119,8 +121,9 @@ fn is_signature_file(filename: &str) -> bool {
         || lower.ends_with(".md5sum")
 }
 
-fn is_platform_binary(filename: &str) -> bool {
-    let lower = filename.to_lowercase();
+/// Checks whether the filename looks like a platform-specific binary.
+/// Expects `lower` to already be lowercased.
+fn is_platform_binary(lower: &str) -> bool {
     let has_platform_info = lower.contains("linux")
         || lower.contains("darwin")
         || lower.contains("windows")
@@ -128,7 +131,7 @@ fn is_platform_binary(filename: &str) -> bool {
         || lower.contains("amd64")
         || lower.contains("arm64")
         || lower.contains("aarch64");
-    let is_not_archive = !is_archive(&lower);
+    let is_not_archive = !is_archive(lower);
     let is_not_signature = !lower.ends_with(".sig") && !lower.ends_with(".asc");
 
     has_platform_info && is_not_archive && is_not_signature

@@ -38,7 +38,7 @@ pub async fn install(
     .await?;
     info!("Installing from release: {}", release.tag_name);
 
-    let selector = selector::create_selector(config.filter);
+    let selector = selector::create_selector(config.filter)?;
     let asset = selector.select(&release.assets)?;
     info!("Selected asset: {}", asset.name);
 
