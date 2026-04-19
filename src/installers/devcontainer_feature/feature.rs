@@ -4,27 +4,27 @@ use std::collections::HashMap;
 /// DevContainer Feature metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Feature {
-    pub id: String,
-    pub version: Option<String>,
-    pub name: Option<String>,
-    pub description: Option<String>,
-    pub options: Option<HashMap<String, FeatureOption>>,
-    pub container_env: Option<HashMap<String, String>>,
-    pub entrypoint: Option<String>,
+pub(super) struct Feature {
+    pub(super) id: String,
+    pub(super) version: Option<String>,
+    pub(super) name: Option<String>,
+    pub(super) description: Option<String>,
+    pub(super) options: Option<HashMap<String, FeatureOption>>,
+    pub(super) container_env: Option<HashMap<String, String>>,
+    pub(super) entrypoint: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FeatureOption {
+pub(super) struct FeatureOption {
     #[serde(rename = "type")]
-    pub option_type: String,
-    pub default: Option<serde_json::Value>,
-    pub description: Option<String>,
+    pub(super) option_type: String,
+    pub(super) default: Option<serde_json::Value>,
+    pub(super) description: Option<String>,
 }
 
 impl Feature {
     /// Resolve feature options with defaults
-    pub fn resolve_options(
+    pub(super) fn resolve_options(
         &self,
         provided_options: Option<HashMap<String, String>>,
     ) -> HashMap<String, String> {

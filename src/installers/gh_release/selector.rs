@@ -2,16 +2,16 @@ use anyhow::{Context, Result};
 use octocrab::models::repos::Asset;
 use regex::Regex;
 
-pub trait AssetSelector {
+pub(super) trait AssetSelector {
     fn select<'a>(&self, assets: &'a [Asset]) -> Result<&'a Asset>;
 }
 
-pub struct FilterSelector {
+struct FilterSelector {
     regex: Regex,
 }
 
 impl FilterSelector {
-    pub fn new(pattern: &str) -> Result<Self> {
+    fn new(pattern: &str) -> Result<Self> {
         let regex = Regex::new(pattern).context("Invalid filter pattern")?;
         Ok(Self { regex })
     }
@@ -26,7 +26,7 @@ impl AssetSelector for FilterSelector {
     }
 }
 
-pub struct PlatformSelector;
+struct PlatformSelector;
 
 impl AssetSelector for PlatformSelector {
     fn select<'a>(&self, assets: &'a [Asset]) -> Result<&'a Asset> {
@@ -36,7 +36,7 @@ impl AssetSelector for PlatformSelector {
     }
 }
 
-pub fn create_selector(filter: Option<&str>) -> Result<Box<dyn AssetSelector>> {
+pub(super) fn create_selector(filter: Option<&str>) -> Result<Box<dyn AssetSelector>> {
     match filter {
         Some(pattern) => Ok(Box::new(FilterSelector::new(pattern)?)),
         None => Ok(Box::new(PlatformSelector)),

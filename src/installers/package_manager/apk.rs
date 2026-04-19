@@ -2,7 +2,7 @@ use crate::utils;
 use anyhow::{Context, Result};
 use log::info;
 
-pub fn install(packages: &[String]) -> Result<()> {
+pub(super) fn install(packages: &[String]) -> Result<()> {
     if std::process::Command::new("which")
         .arg("apk")
         .output()

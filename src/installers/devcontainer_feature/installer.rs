@@ -10,7 +10,7 @@ use super::{DevcontainerFeatureConfig, client};
 
 const ORDERED_BASE_USERS: &[&str] = &["vscode", "node", "codespace"];
 
-pub async fn install_async(
+pub(super) async fn install_async(
     config: &DevcontainerFeatureConfig<'_>,
     retry_config: &crate::cli::RetryConfig,
 ) -> Result<()> {

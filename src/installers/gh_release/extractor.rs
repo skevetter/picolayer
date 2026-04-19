@@ -5,13 +5,13 @@ use std::fs::{self, File};
 use std::io::{BufReader, Write};
 use std::path::Path;
 
-pub enum AssetExtractor {
+enum AssetExtractor {
     Archive,
     RawBinary,
 }
 
 impl AssetExtractor {
-    pub async fn extract(
+    async fn extract(
         &self,
         asset: &Asset,
         binary_names: &[String],
@@ -37,7 +37,7 @@ impl AssetExtractor {
     }
 }
 
-pub fn create_extractor(asset: &Asset) -> AssetExtractor {
+fn create_extractor(asset: &Asset) -> AssetExtractor {
     if is_archive(&asset.name.to_lowercase()) {
         AssetExtractor::Archive
     } else {
@@ -45,7 +45,7 @@ pub fn create_extractor(asset: &Asset) -> AssetExtractor {
     }
 }
 
-pub async fn extract_and_install(
+pub(super) async fn extract_and_install(
     asset: &Asset,
     binary_names: &[String],
     bin_location: &str,

@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use log::info;
 
-pub fn install(packages: &[String]) -> Result<()> {
+pub(super) fn install(packages: &[String]) -> Result<()> {
     anyhow::ensure!(
         which::which("brew").is_ok(),
         "Homebrew not installed or not in PATH"

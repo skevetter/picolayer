@@ -7,7 +7,7 @@ use super::PackageManagerConfig;
 const PPA_SUPPORT_PACKAGES: &[&str] = &["software-properties-common"];
 const PPA_SUPPORT_PACKAGES_DEBIAN: &[&str] = &["python3-launchpadlib"];
 
-pub fn install(tool: &str, config: &PackageManagerConfig) -> Result<()> {
+pub(super) fn install(tool: &str, config: &PackageManagerConfig) -> Result<()> {
     anyhow::ensure!(
         which::which(tool).is_ok(),
         "{} command not found in PATH",
@@ -35,7 +35,7 @@ pub fn install(tool: &str, config: &PackageManagerConfig) -> Result<()> {
     Ok(())
 }
 
-pub fn install_aptitude(packages: &[String]) -> Result<()> {
+pub(super) fn install_aptitude(packages: &[String]) -> Result<()> {
     update_repositories()?;
     install_aptitude_tool()?;
     install_packages_aptitude(packages)?;

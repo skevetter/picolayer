@@ -8,7 +8,7 @@ use crate::cli::RetryConfig;
 use crate::utils::retry::retry_async;
 
 /// Download and extract OCI layer
-pub async fn download_and_extract_layer(
+pub(super) async fn download_and_extract_layer(
     feature_ref: &str,
     output_dir: &Path,
     username: Option<&str>,
