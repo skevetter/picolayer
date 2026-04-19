@@ -47,3 +47,88 @@ fn setup_file_logging(builder: &mut env_logger::Builder, log_file_path: &str) ->
     builder.target(env_logger::Target::Pipe(Box::new(file)));
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use log::LevelFilter;
+    use serial_test::serial;
+
+    #[test]
+    #[serial]
+    fn get_log_level_defaults_to_warn() {
+        // Clear relevant env vars
+        // SAFETY: serialized via #[serial] so no concurrent env access
+        unsafe {
+            std::env::remove_var("PICOLAYER_LOG_LEVEL");
+            std::env::remove_var("RUST_LOG");
+        }
+        assert_eq!(get_log_level(), LevelFilter::Warn);
+    }
+
+    #[test]
+    #[serial]
+    fn get_log_level_respects_picolayer_env() {
+        // SAFETY: serialized via #[serial] so no concurrent env access
+        unsafe {
+            std::env::set_var("PICOLAYER_LOG_LEVEL", "debug");
+            std::env::remove_var("RUST_LOG");
+        }
+        let level = get_log_level();
+        // SAFETY: serialized via #[serial] so no concurrent env access
+        unsafe {
+            std::env::remove_var("PICOLAYER_LOG_LEVEL");
+        }
+        assert_eq!(level, LevelFilter::Debug);
+    }
+
+    #[test]
+    #[serial]
+    fn get_log_level_picolayer_overrides_rust_log() {
+        // SAFETY: serialized via #[serial] so no concurrent env access
+        unsafe {
+            std::env::set_var("PICOLAYER_LOG_LEVEL", "error");
+            std::env::set_var("RUST_LOG", "info");
+        }
+        let level = get_log_level();
+        // SAFETY: serialized via #[serial] so no concurrent env access
+        unsafe {
+            std::env::remove_var("PICOLAYER_LOG_LEVEL");
+            std::env::remove_var("RUST_LOG");
+        }
+        assert_eq!(level, LevelFilter::Error);
+    }
+
+    #[test]
+    #[serial]
+    fn get_log_level_falls_back_to_rust_log() {
+        // SAFETY: serialized via #[serial] so no concurrent env access
+        unsafe {
+            std::env::remove_var("PICOLAYER_LOG_LEVEL");
+            std::env::set_var("RUST_LOG", "info");
+        }
+        let level = get_log_level();
+        // SAFETY: serialized via #[serial] so no concurrent env access
+        unsafe {
+            std::env::remove_var("RUST_LOG");
+        }
+        assert_eq!(level, LevelFilter::Info);
+    }
+
+    #[test]
+    #[serial]
+    fn get_log_level_ignores_invalid_values() {
+        // SAFETY: serialized via #[serial] so no concurrent env access
+        unsafe {
+            std::env::set_var("PICOLAYER_LOG_LEVEL", "not_a_level");
+            std::env::remove_var("RUST_LOG");
+        }
+        let level = get_log_level();
+        // SAFETY: serialized via #[serial] so no concurrent env access
+        unsafe {
+            std::env::remove_var("PICOLAYER_LOG_LEVEL");
+        }
+        // Falls through to default when parse fails
+        assert_eq!(level, LevelFilter::Warn);
+    }
+}

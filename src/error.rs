@@ -90,3 +90,81 @@ impl From<anyhow::Error> for PicolayerError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_anyhow_classifies_github_not_found() {
+        let err = anyhow::anyhow!("GitHub API returned Not Found");
+        let picolayer_err: PicolayerError = err.into();
+        assert!(matches!(picolayer_err, PicolayerError::RepositoryNotFound));
+    }
+
+    #[test]
+    fn from_anyhow_classifies_oci_pull_failure() {
+        let err = anyhow::anyhow!("Failed to pull OCI image");
+        let picolayer_err: PicolayerError = err.into();
+        assert!(matches!(
+            picolayer_err,
+            PicolayerError::ContainerFeatureDownloadFailed
+        ));
+    }
+
+    #[test]
+    fn from_anyhow_classifies_no_matching_assets() {
+        let err = anyhow::anyhow!("No matching release found");
+        let picolayer_err: PicolayerError = err.into();
+        assert!(matches!(picolayer_err, PicolayerError::NoMatchingAssets));
+    }
+
+    #[test]
+    fn from_anyhow_classifies_permission_denied() {
+        let err = anyhow::anyhow!("Permission denied writing to /usr/local/bin");
+        let picolayer_err: PicolayerError = err.into();
+        assert!(matches!(picolayer_err, PicolayerError::PermissionDenied));
+    }
+
+    #[test]
+    fn from_anyhow_classifies_disk_space() {
+        let err = anyhow::anyhow!("No space left on device");
+        let picolayer_err: PicolayerError = err.into();
+        assert!(matches!(
+            picolayer_err,
+            PicolayerError::InsufficientDiskSpace
+        ));
+    }
+
+    #[test]
+    fn from_anyhow_classifies_network_error() {
+        let err = anyhow::anyhow!("Network connection refused");
+        let picolayer_err: PicolayerError = err.into();
+        assert!(matches!(
+            picolayer_err,
+            PicolayerError::NetworkConnectionFailed
+        ));
+    }
+
+    #[test]
+    fn from_anyhow_falls_through_to_catch_all() {
+        let err = anyhow::anyhow!("Some completely unknown error");
+        let picolayer_err: PicolayerError = err.into();
+        assert!(matches!(picolayer_err, PicolayerError::CatchAll(_)));
+    }
+
+    #[test]
+    fn display_includes_helpful_message() {
+        let err = PicolayerError::RepositoryNotFound;
+        let display = format!("{}", err);
+        assert!(display.contains("Repository not found"));
+        assert!(display.contains("Check the owner/repo names"));
+    }
+
+    #[test]
+    fn display_catch_all_includes_error_message() {
+        let err = PicolayerError::CatchAll(anyhow::anyhow!("test error message"));
+        let display = format!("{}", err);
+        assert!(display.contains("test error message"));
+    }
+}
