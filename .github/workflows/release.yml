@@ -100,7 +100,7 @@ jobs:
           mv picolayer-${{ matrix.target }}.tar.gz ../../../
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: picolayer-${{ matrix.target }}
           path: picolayer-${{ matrix.target }}.tar.gz
@@ -112,7 +112,7 @@ jobs:
     if: needs.semantic-release.outputs.new-release-published == 'true'
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
