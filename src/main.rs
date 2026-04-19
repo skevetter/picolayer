@@ -8,21 +8,22 @@ use error::PicolayerError;
 use log::info;
 use std::process;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("Failed to install default CryptoProvider");
 
-    if let Err(e) = run() {
+    if let Err(e) = run().await {
         let picolayer_error: PicolayerError = e.into();
         eprintln!("{}", picolayer_error);
         process::exit(1);
     }
 }
 
-fn run() -> Result<()> {
+async fn run() -> Result<()> {
     utils::logging::init_logging().context("Failed to initialize logging")?;
     info!("Starting picolayer");
-    cli::run()?;
+    cli::run().await?;
     Ok(())
 }
