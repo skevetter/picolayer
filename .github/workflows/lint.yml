@@ -10,14 +10,14 @@ jobs:
   megalinter:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       issues: write
       pull-requests: write
     steps:
       - uses: actions/checkout@v6
 
       - name: megalinter
-        uses: oxsecurity/megalinter@v9
+        uses: oxsecurity/megalinter@8fbdead70d1409964ab3d5afa885e18ee85388bb # v9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_ALL_CODEBASE: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') }}

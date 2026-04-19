@@ -11,21 +11,21 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: bitwarden/sm-action@v3.0.0
+      - uses: bitwarden/sm-action@27c0c9dcab679d7250dbab91227c85b49ffa5e0f # v3.0.0
         with:
           access_token: ${{ secrets.BITWARDEN_SECRETS_ACCESS_TOKEN }}
           secrets: |
             ${{ secrets.RENOVATE_TOKEN_UUID }} > RENOVATE_TOKEN
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v7
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
           git_user_signingkey: true
           git_commit_gpgsign: true
 
-      - uses: renovatebot/github-action@v46.1.9
+      - uses: renovatebot/github-action@eb932558ad942cccfd8211cf535f17ff183a9f74 # v46.1.9
         with:
           token: ${{ env.RENOVATE_TOKEN }}
         env:
