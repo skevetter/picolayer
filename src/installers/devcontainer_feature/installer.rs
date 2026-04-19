@@ -247,13 +247,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_os = "linux")]
     fn get_home_dir_for_user_returns_some_for_root() {
-        // root should exist on all Linux systems; getent is not available on macOS
+        // root should exist on all Unix systems
         let result = get_home_dir_for_user("root");
         assert!(result.is_some());
         let home = result.unwrap();
         assert!(!home.is_empty());
+        // root's home is typically /root but could vary
         assert!(
             home.starts_with('/'),
             "Home dir should be an absolute path: {home}"
