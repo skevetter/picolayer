@@ -9,6 +9,10 @@ use log::info;
 use std::process;
 
 fn main() {
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install default CryptoProvider");
+
     if let Err(e) = run() {
         let picolayer_error: PicolayerError = e.into();
         eprintln!("{}", picolayer_error);

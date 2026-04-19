@@ -455,6 +455,11 @@ fn test_xz_extraction_performance() {
 fn test_pkgx_xz_installation_end_to_end() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
+    let arch = if std::env::consts::ARCH == "x86_64" {
+        "x86-64"
+    } else {
+        std::env::consts::ARCH
+    };
     let os = if std::env::consts::OS == "macos" {
         "darwin"
     } else {
@@ -474,7 +479,7 @@ fn test_pkgx_xz_installation_end_to_end() {
         "--install-dir",
         bin_location,
         "--filter",
-        &format!("{}.*x86-64\\.tar\\.xz", os),
+        &format!("{}.*{}\\.tar\\.xz", os, arch),
     ]);
 
     let binary_path = format!("{}/pkgx", bin_location);
