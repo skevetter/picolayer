@@ -24,7 +24,6 @@ pub async fn download_and_extract_layer(
 
     let config = ClientConfig {
         accept_invalid_certificates: false,
-        accept_invalid_hostnames: false,
         ..Default::default()
     };
 
