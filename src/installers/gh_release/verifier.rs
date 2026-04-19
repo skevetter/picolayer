@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use log::{info, warn};
+use log::info;
 use octocrab::models::repos::Asset;
 use sha2::{Digest, Sha256, Sha512};
 use std::collections::HashMap;
@@ -140,18 +140,22 @@ async fn verify_gpg_signature(
         info!("GPG signature verification passed!");
         Ok(())
     } else {
-        warn!("Found signature file but no GPG key provided");
-        info!("Use --gpg-key option to enable GPG verification");
-        Ok(())
+        anyhow::bail!(
+            "Signature file found ({}) but no GPG key provided. \
+             Use --gpg-key to provide a public key for verification.",
+            signature_asset.name
+        );
     }
 }
 
 async fn load_public_key(key_content: &str) -> Result<pgp::composed::SignedPublicKey> {
     use pgp::composed::{Deserializable, SignedPublicKey};
 
-    let key_data = if key_content.starts_with("http://") || key_content.starts_with("https://") {
+    let key_data = if key_content.starts_with("https://") {
         info!("Downloading GPG public key from URL");
         reqwest::get(key_content).await?.text().await?
+    } else if key_content.starts_with("http://") {
+        anyhow::bail!("Refusing to download GPG key over insecure HTTP. Use HTTPS instead.");
     } else if std::path::Path::new(key_content).exists() {
         tokio::fs::read_to_string(key_content).await?
     } else {
@@ -409,5 +413,33 @@ mod tests {
         assert!(patterns.contains(&"app.tar.gz.sha256".to_string()));
         assert!(patterns.contains(&"app.sha256".to_string()));
         assert!(patterns.contains(&"SHA256SUMS".to_string()));
+    }
+
+    #[test]
+    fn test_load_public_key_rejects_http() {
+        // We can't call the async function directly in a sync test,
+        // so test the URL validation logic. The function should bail on http://
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(load_public_key("http://example.com/key.asc"));
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("insecure HTTP"),
+            "Expected HTTP rejection error, got: {err_msg}"
+        );
+    }
+
+    #[test]
+    fn test_load_public_key_accepts_non_url_as_inline_key() {
+        // Non-URL, non-file content should be treated as inline key data.
+        // It will fail to parse as a PGP key, but should NOT fail with an HTTP error.
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(load_public_key("not-a-url-or-file"));
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            !err_msg.contains("insecure HTTP"),
+            "Non-URL content should not trigger HTTP rejection: {err_msg}"
+        );
     }
 }
