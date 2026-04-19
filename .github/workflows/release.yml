@@ -20,7 +20,7 @@ jobs:
       new-release-version: ${{ steps.semantic.outputs.new_release_version }}
     steps:
       - name: bitwarden secrets
-        uses: bitwarden/sm-action@v3.0.0
+        uses: bitwarden/sm-action@27c0c9dcab679d7250dbab91227c85b49ffa5e0f # v3.0.0
         with:
           access_token: ${{ secrets.BITWARDEN_SECRETS_ACCESS_TOKEN }}
           secrets: |
@@ -32,7 +32,7 @@ jobs:
           token: ${{ env.WORKFLOWS_PAT }}
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v7
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
@@ -40,7 +40,7 @@ jobs:
           git_commit_gpgsign: true
 
       - id: semantic
-        uses: cycjimmy/semantic-release-action@v6
+        uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6
         with:
           extra_plugins: |
             @semantic-release/exec
@@ -117,7 +117,7 @@ jobs:
           path: artifacts
 
       - name: Upload binaries to release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3
         with:
           tag_name: v${{ needs.semantic-release.outputs.new-release-version }}
           files: artifacts/*/picolayer-*.tar.gz
