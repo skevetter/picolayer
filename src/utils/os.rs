@@ -111,3 +111,62 @@ pub fn is_macos() -> bool {
 pub fn is_linux() -> bool {
     std::env::consts::OS == "linux"
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detect_distro_returns_valid_variant() {
+        // Should return some valid distro, never panic
+        let result = detect_distro();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn is_macos_matches_platform() {
+        if cfg!(target_os = "macos") {
+            assert!(is_macos());
+        } else {
+            assert!(!is_macos());
+        }
+    }
+
+    #[test]
+    fn is_linux_matches_platform() {
+        if cfg!(target_os = "linux") {
+            assert!(is_linux());
+        } else {
+            assert!(!is_linux());
+        }
+    }
+
+    #[test]
+    fn linux_distro_enum_debug() {
+        // Ensure Debug derive works
+        let distro = LinuxDistro::Ubuntu;
+        assert_eq!(format!("{:?}", distro), "Ubuntu");
+    }
+
+    #[test]
+    fn linux_distro_enum_eq() {
+        // Ensure PartialEq works
+        assert_eq!(LinuxDistro::Ubuntu, LinuxDistro::Ubuntu);
+        assert_ne!(LinuxDistro::Ubuntu, LinuxDistro::Debian);
+        assert_ne!(LinuxDistro::Alpine, LinuxDistro::Other);
+    }
+
+    #[test]
+    fn debian_like_includes_ubuntu_and_debian() {
+        // On this system, verify consistency between functions
+        if is_ubuntu() {
+            assert!(is_debian_like());
+        }
+        if is_debian() {
+            assert!(is_debian_like());
+        }
+        if is_alpine() {
+            assert!(!is_debian_like());
+        }
+    }
+}

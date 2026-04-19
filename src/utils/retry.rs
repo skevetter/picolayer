@@ -56,3 +56,68 @@ where
 
     Err(last_error.unwrap())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    fn test_config(max_retries: u32) -> RetryConfig {
+        RetryConfig {
+            max_retries,
+            initial_delay_ms: 1, // 1ms for fast tests
+            backoff_multiplier: 1.0,
+        }
+    }
+
+    #[tokio::test]
+    async fn retry_succeeds_on_first_attempt() {
+        let result = retry_async(&test_config(3), "test", || async {
+            Ok::<_, anyhow::Error>(42)
+        })
+        .await;
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[tokio::test]
+    async fn retry_succeeds_after_failures() {
+        let attempts = AtomicU32::new(0);
+        let result = retry_async(&test_config(3), "test", || {
+            let count = attempts.fetch_add(1, Ordering::SeqCst);
+            async move {
+                if count < 2 {
+                    Err(anyhow::anyhow!("transient failure"))
+                } else {
+                    Ok(42)
+                }
+            }
+        })
+        .await;
+        assert_eq!(result.unwrap(), 42);
+        assert_eq!(attempts.load(Ordering::SeqCst), 3); // 2 failures + 1 success
+    }
+
+    #[tokio::test]
+    async fn retry_exhausts_all_attempts() {
+        let attempts = AtomicU32::new(0);
+        let result: Result<i32> = retry_async(&test_config(2), "test", || {
+            attempts.fetch_add(1, Ordering::SeqCst);
+            async { Err(anyhow::anyhow!("persistent failure")) }
+        })
+        .await;
+        assert!(result.is_err());
+        assert_eq!(attempts.load(Ordering::SeqCst), 3); // initial + 2 retries
+    }
+
+    #[tokio::test]
+    async fn retry_zero_retries_runs_once() {
+        let attempts = AtomicU32::new(0);
+        let result: Result<i32> = retry_async(&test_config(0), "test", || {
+            attempts.fetch_add(1, Ordering::SeqCst);
+            async { Err(anyhow::anyhow!("failure")) }
+        })
+        .await;
+        assert!(result.is_err());
+        assert_eq!(attempts.load(Ordering::SeqCst), 1);
+    }
+}
