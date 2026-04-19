@@ -65,31 +65,28 @@ pub async fn fetch_release(
 
 #[cfg(test)]
 mod tests {
-    use chrono::Utc;
     use octocrab::models::repos::Release;
 
     fn create_mock_release(tag_name: &str, prerelease: bool) -> Release {
-        Release {
-            id: 1.into(),
-            node_id: "node123".to_string(),
-            tag_name: tag_name.to_string(),
-            target_commitish: "main".to_string(),
-            name: Some(tag_name.to_string()),
-            body: None,
-            draft: false,
-            prerelease,
-            created_at: Some(Utc::now()),
-            published_at: Some(Utc::now()),
-            author: None,
-            assets: vec![],
-            upload_url: "https://example.com/upload".to_string(),
-            html_url: "https://example.com".parse().unwrap(),
-            assets_url: "https://example.com/assets".parse().unwrap(),
-            tarball_url: Some("https://example.com/tarball".parse().unwrap()),
-            zipball_url: Some("https://example.com/zipball".parse().unwrap()),
-            url: "https://example.com/release".parse().unwrap(),
-            immutable: None,
-        }
+        serde_json::from_value(serde_json::json!({
+            "id": 1,
+            "node_id": "node123",
+            "tag_name": tag_name,
+            "target_commitish": "main",
+            "name": tag_name,
+            "draft": false,
+            "prerelease": prerelease,
+            "created_at": "2024-01-01T00:00:00Z",
+            "published_at": "2024-01-01T00:00:00Z",
+            "assets": [],
+            "upload_url": "https://example.com/upload",
+            "html_url": "https://example.com",
+            "assets_url": "https://example.com/assets",
+            "tarball_url": "https://example.com/tarball",
+            "zipball_url": "https://example.com/zipball",
+            "url": "https://example.com/release"
+        }))
+        .expect("Failed to deserialize mock Release")
     }
 
     #[test]
