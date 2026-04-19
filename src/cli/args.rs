@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use log::warn;
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -136,11 +137,11 @@ pub enum Commands {
     #[command(name = "gh-release")]
     GhRelease {
         /// Repository owner
-        #[arg(long)]
+        #[arg(long, value_parser = non_empty_string)]
         owner: String,
 
         /// Repository name
-        #[arg(long)]
+        #[arg(long, value_parser = non_empty_string)]
         repo: String,
 
         /// Comma-separated list of binary names
@@ -212,13 +213,26 @@ pub struct PpaArgs {
     pub force_ppas_on_non_ubuntu: bool,
 }
 
+fn non_empty_string(s: &str) -> Result<String, String> {
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        Err("value cannot be empty".to_string())
+    } else {
+        Ok(trimmed.to_string())
+    }
+}
+
 /// Parse comma-separated string into a vector of trimmed strings
 pub fn normalize_package_list(input: &str) -> Vec<String> {
-    input
+    let result: Vec<String> = input
         .split(',')
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
-        .collect()
+        .collect();
+    if result.is_empty() {
+        warn!("Package list is empty after normalization: '{}'", input);
+    }
+    result
 }
 
 /// Parse key=value pairs into a HashMap
@@ -227,13 +241,98 @@ pub fn parse_key_value_pairs(pairs: &[String]) -> Option<HashMap<String, String>
         return None;
     }
 
-    let map: HashMap<String, String> = pairs
-        .iter()
-        .filter_map(|pair| {
-            pair.split_once('=')
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-        })
-        .collect();
+    let mut map = HashMap::new();
+    for pair in pairs {
+        if let Some((k, v)) = pair.split_once('=') {
+            map.insert(k.to_string(), v.to_string());
+        } else {
+            warn!("Ignoring malformed key=value pair: '{}'", pair);
+        }
+    }
 
     if map.is_empty() { None } else { Some(map) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_package_list_basic() {
+        let result = normalize_package_list("foo,bar,baz");
+        assert_eq!(result, vec!["foo", "bar", "baz"]);
+    }
+
+    #[test]
+    fn normalize_package_list_trims_whitespace() {
+        let result = normalize_package_list("  foo , bar , baz  ");
+        assert_eq!(result, vec!["foo", "bar", "baz"]);
+    }
+
+    #[test]
+    fn normalize_package_list_filters_empty() {
+        let result = normalize_package_list("foo,,bar,,,baz");
+        assert_eq!(result, vec!["foo", "bar", "baz"]);
+    }
+
+    #[test]
+    fn normalize_package_list_single_package() {
+        let result = normalize_package_list("foo");
+        assert_eq!(result, vec!["foo"]);
+    }
+
+    #[test]
+    fn normalize_package_list_empty_string() {
+        let result = normalize_package_list("");
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn parse_key_value_pairs_basic() {
+        let pairs = vec!["key1=val1".to_string(), "key2=val2".to_string()];
+        let result = parse_key_value_pairs(&pairs).unwrap();
+        assert_eq!(result.get("key1").unwrap(), "val1");
+        assert_eq!(result.get("key2").unwrap(), "val2");
+    }
+
+    #[test]
+    fn parse_key_value_pairs_empty_input() {
+        let result = parse_key_value_pairs(&[]);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn parse_key_value_pairs_malformed_entries_dropped() {
+        let pairs = vec!["key1=val1".to_string(), "not-a-pair".to_string()];
+        let result = parse_key_value_pairs(&pairs).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result.get("key1").unwrap(), "val1");
+    }
+
+    #[test]
+    fn parse_key_value_pairs_all_malformed() {
+        let pairs = vec!["no-equals".to_string(), "another-one".to_string()];
+        let result = parse_key_value_pairs(&pairs);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn parse_key_value_pairs_value_with_equals() {
+        // Values containing '=' should keep everything after the first '='
+        let pairs = vec!["key=val=ue".to_string()];
+        let result = parse_key_value_pairs(&pairs).unwrap();
+        assert_eq!(result.get("key").unwrap(), "val=ue");
+    }
+
+    #[test]
+    fn non_empty_string_rejects_empty() {
+        assert!(non_empty_string("").is_err());
+        assert!(non_empty_string("   ").is_err());
+    }
+
+    #[test]
+    fn non_empty_string_trims_and_accepts() {
+        assert_eq!(non_empty_string("  hello  ").unwrap(), "hello");
+        assert_eq!(non_empty_string("test").unwrap(), "test");
+    }
 }
