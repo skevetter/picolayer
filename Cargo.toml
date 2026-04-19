@@ -2,6 +2,7 @@
 name = "picolayer"
 version = "0.2.13"
 edition = "2024"
+rust-version = "1.85.0"
 authors = ["skevetter"]
 description = "A package installer and script runner that ensures minimal container layers"
 license = "MIT"
@@ -38,7 +39,6 @@ openssl = { version = "0.10", features = ["vendored"] }
 [dependencies]
 anyhow = "1.0.100"
 clap = { version = "4.5.48", features = ["derive"] }
-env = "1.0.1"
 env_logger = "0.11"
 flate2 = "1.1.4"
 hex = "0.4.3"
@@ -67,6 +67,5 @@ which = "8.0.0"
 xz = "0.1.0"
 
 [dev-dependencies]
-chrono = "0.4"
 dirs-next = "2.0.0"
 serial_test = "3.2.0"
