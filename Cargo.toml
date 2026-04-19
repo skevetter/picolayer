@@ -43,17 +43,19 @@ env_logger = "0.11"
 flate2 = "1.1.4"
 hex = "0.4.3"
 indicatif = "0.18"
-libpkgx = "0.7.0"
+libpkgx = "0.8.2"
 log = "0.4"
 oci-client = "0.15.0"
 octocrab = "0.48.0"
 pgp = "0.19.0"
 regex = "1.11.3"
-reqwest = { version = "0.12.23", features = [
+reqwest = { version = "0.13", features = [
     "json",
-    "rustls-tls-webpki-roots",
+    "rustls",
+    "webpki-roots",
 ], default-features = false }
-rusqlite = "0.33.0"
+rusqlite = "0.39.0"
+rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.10.9"
