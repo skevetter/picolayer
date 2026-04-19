@@ -146,7 +146,18 @@ fn test_pkgx_with_gpg_verification() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
     let gpg_key_url = "https://dist.pkgx.dev/gpg-public.asc";
+    let arch = if std::env::consts::ARCH == "x86_64" {
+        "x86-64"
+    } else {
+        std::env::consts::ARCH
+    };
+    let os = if std::env::consts::OS == "macos" {
+        "darwin"
+    } else {
+        std::env::consts::OS
+    };
 
+    // Use --filter to select .tar.xz assets which have .asc GPG signatures
     let output = run_picolayer(&[
         "gh-release",
         "--owner",
@@ -159,6 +170,8 @@ fn test_pkgx_with_gpg_verification() {
         "latest",
         "--install-dir",
         bin_location,
+        "--filter",
+        &format!("{}.*{}\\.tar\\.xz$", os, arch),
         "--verify-checksum",
         "--gpg-key",
         gpg_key_url,
