@@ -212,10 +212,7 @@ fn extract_tar_gz(
 
         // Validate path to prevent path traversal
         if !validate_tar_entry_path(&path, extract_dir) {
-            warn!(
-                "Skipping tar.gz entry with unsafe path: {}",
-                path.display()
-            );
+            warn!("Skipping tar.gz entry with unsafe path: {}", path.display());
             continue;
         }
 
@@ -273,10 +270,7 @@ fn extract_tar_xz(
 
         // Validate path to prevent path traversal
         if !validate_tar_entry_path(&path, &extract_dir) {
-            warn!(
-                "Skipping tar.xz entry with unsafe path: {}",
-                path.display()
-            );
+            warn!("Skipping tar.xz entry with unsafe path: {}", path.display());
             continue;
         }
 
@@ -305,7 +299,10 @@ fn find_and_install_binaries(
         let entry = entry?;
         // Skip symlinks to prevent symlink-following attacks
         if entry.file_type().is_symlink() {
-            warn!("Skipping symlink during binary search: {}", entry.path().display());
+            warn!(
+                "Skipping symlink during binary search: {}",
+                entry.path().display()
+            );
             continue;
         }
         if entry.file_type().is_file() {
@@ -400,15 +397,13 @@ mod tests {
     #[test]
     fn is_archive_rejects_non_archives() {
         let non_archives = [
-            "tool",
-            "tool.exe",
-            "tool.deb",
-            "tool.rpm",
-            "tool.dmg",
-            "tool.txt",
+            "tool", "tool.exe", "tool.deb", "tool.rpm", "tool.dmg", "tool.txt",
         ];
         for name in &non_archives {
-            assert!(!is_archive(name), "{name} should NOT be recognised as archive");
+            assert!(
+                !is_archive(name),
+                "{name} should NOT be recognised as archive"
+            );
         }
     }
 
