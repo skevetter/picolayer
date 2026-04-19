@@ -358,3 +358,147 @@ fn install_binary(
     info!("Installed: {} -> {}", file_name, dest_path.display());
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mock_asset(name: &str) -> Asset {
+        serde_json::from_value(serde_json::json!({
+            "id": 1,
+            "node_id": "n",
+            "name": name,
+            "content_type": "application/octet-stream",
+            "size": 100,
+            "download_count": 0,
+            "state": "uploaded",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "browser_download_url": format!("https://example.com/{}", name),
+            "url": "https://example.com/test"
+        }))
+        .expect("failed to construct mock Asset")
+    }
+
+    // ── is_archive ──────────────────────────────────────────────────────
+
+    #[test]
+    fn is_archive_recognises_supported_extensions() {
+        let archives = [
+            "tool.tar.gz",
+            "tool.tgz",
+            "tool.tar.xz",
+            "tool.zip",
+            "tool.tar.bz2",
+            "tool.7z",
+        ];
+        for name in &archives {
+            assert!(is_archive(name), "{name} should be recognised as archive");
+        }
+    }
+
+    #[test]
+    fn is_archive_rejects_non_archives() {
+        let non_archives = [
+            "tool",
+            "tool.exe",
+            "tool.deb",
+            "tool.rpm",
+            "tool.dmg",
+            "tool.txt",
+        ];
+        for name in &non_archives {
+            assert!(!is_archive(name), "{name} should NOT be recognised as archive");
+        }
+    }
+
+    // ── is_tar_xz_archive ──────────────────────────────────────────────
+
+    #[test]
+    fn is_tar_xz_archive_valid_magic_bytes() {
+        // XZ magic: 0xFD + "7zXZ\0"
+        let valid: Vec<u8> = vec![0xFD, b'7', b'z', b'X', b'Z', 0x00, 0x01, 0x02];
+        assert!(is_tar_xz_archive(&valid));
+    }
+
+    #[test]
+    fn is_tar_xz_archive_invalid_data() {
+        assert!(!is_tar_xz_archive(&[0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
+        assert!(!is_tar_xz_archive(&[0xFD])); // too short
+        assert!(!is_tar_xz_archive(&[])); // empty
+    }
+
+    // ── is_gzip_archive ────────────────────────────────────────────────
+
+    #[test]
+    fn is_gzip_archive_valid_magic_bytes() {
+        let valid: Vec<u8> = vec![0x1f, 0x8b, 0x08, 0x00];
+        assert!(is_gzip_archive(&valid));
+    }
+
+    #[test]
+    fn is_gzip_archive_invalid_data() {
+        assert!(!is_gzip_archive(&[0x00, 0x00]));
+        assert!(!is_gzip_archive(&[0x1f])); // too short
+        assert!(!is_gzip_archive(&[])); // empty
+    }
+
+    // ── extract_raw_binary ─────────────────────────────────────────────
+
+    #[test]
+    fn extract_raw_binary_writes_file_with_correct_permissions() {
+        let tmp = tempfile::tempdir().expect("failed to create temp dir");
+        let bin_dir = tmp.path().join("bin");
+
+        let data = b"#!/bin/sh\necho hello\n";
+        let names = vec!["my-tool".to_string()];
+
+        extract_raw_binary(data, &names, bin_dir.to_str().unwrap())
+            .expect("extract_raw_binary failed");
+
+        let dest = bin_dir.join("my-tool");
+        assert!(dest.exists(), "binary file should exist");
+
+        let contents = fs::read(&dest).expect("failed to read binary");
+        assert_eq!(contents, data);
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(&dest).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o755, "binary should be executable (0755)");
+        }
+    }
+
+    // ── create_extractor ───────────────────────────────────────────────
+
+    #[test]
+    fn create_extractor_returns_archive_for_archives() {
+        let asset = mock_asset("tool-v1.2.3-linux-amd64.tar.gz");
+        assert!(
+            matches!(create_extractor(&asset), AssetExtractor::Archive),
+            "tar.gz asset should produce Archive extractor"
+        );
+
+        let asset = mock_asset("tool.zip");
+        assert!(
+            matches!(create_extractor(&asset), AssetExtractor::Archive),
+            "zip asset should produce Archive extractor"
+        );
+    }
+
+    #[test]
+    fn create_extractor_returns_raw_binary_for_non_archives() {
+        let asset = mock_asset("tool-v1.2.3-linux-amd64");
+        assert!(
+            matches!(create_extractor(&asset), AssetExtractor::RawBinary),
+            "plain binary asset should produce RawBinary extractor"
+        );
+
+        let asset = mock_asset("tool.exe");
+        assert!(
+            matches!(create_extractor(&asset), AssetExtractor::RawBinary),
+            "exe asset should produce RawBinary extractor"
+        );
+    }
+}
