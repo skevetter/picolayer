@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Resolve package dependencies using libpkgx
-pub fn resolve_package_with_libpkgx(
+pub(super) fn resolve_package_with_libpkgx(
     dependencies: &[String],
 ) -> Result<(HashMap<String, String>, Vec<libpkgx::types::Installation>)> {
     let rt = tokio::runtime::Runtime::new()
@@ -118,7 +118,7 @@ async fn resolve_dependencies_async(
 }
 
 /// Query the pkgx pantry database to resolve a tool name to a project name
-pub fn map_tool_to_project(tool_name: &str, conn: &rusqlite::Connection) -> Result<String> {
+fn map_tool_to_project(tool_name: &str, conn: &rusqlite::Connection) -> Result<String> {
     let tool_name_string = tool_name.to_string();
     match libpkgx::pantry_db::projects_for_symbol(&tool_name_string, conn) {
         Ok(projects) if !projects.is_empty() => {
@@ -150,7 +150,7 @@ pub fn map_tool_to_project(tool_name: &str, conn: &rusqlite::Connection) -> Resu
 }
 
 /// Resolve a tool name to a project name
-pub fn resolve_tool_to_project(tool_name: &str) -> Result<String> {
+pub(super) fn resolve_tool_to_project(tool_name: &str) -> Result<String> {
     assert!(std::env::var("PKGX_DIR").is_ok());
     assert!(std::env::var("PKGX_PANTRY_DIR").is_ok());
     let config = Config::new().context("Failed to initialize libpkgx config")?;
@@ -173,7 +173,7 @@ pub fn resolve_tool_to_project(tool_name: &str) -> Result<String> {
 }
 
 /// Format tool spec for libpkgx (without + prefix)
-pub fn format_tool_spec(project_name: &str, version_spec: &str) -> String {
+pub(super) fn format_tool_spec(project_name: &str, version_spec: &str) -> String {
     if version_spec == "latest" {
         project_name.to_string()
     } else {
@@ -182,7 +182,7 @@ pub fn format_tool_spec(project_name: &str, version_spec: &str) -> String {
 }
 
 /// Format project arg for pkgx binary (with + prefix)
-pub fn format_project_arg(project_name: &str, version_spec: &str) -> String {
+pub(super) fn format_project_arg(project_name: &str, version_spec: &str) -> String {
     if version_spec == "latest" {
         format!("+{}", project_name)
     } else {
@@ -191,7 +191,7 @@ pub fn format_project_arg(project_name: &str, version_spec: &str) -> String {
 }
 
 /// Check if the pkgx binary is available on the system
-pub fn check_pkgx_binary() -> bool {
+pub(super) fn check_pkgx_binary() -> bool {
     use std::process::{Command, Stdio};
 
     Command::new("pkgx")

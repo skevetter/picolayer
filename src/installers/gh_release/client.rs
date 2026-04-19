@@ -5,7 +5,7 @@ use octocrab::models::repos::Release;
 use crate::cli::RetryConfig;
 use crate::utils::retry::retry_async;
 
-pub async fn fetch_release(
+pub(super) async fn fetch_release(
     owner: &str,
     repo: &str,
     version: &str,

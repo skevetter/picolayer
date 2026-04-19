@@ -4,7 +4,7 @@ use octocrab::models::repos::Asset;
 use sha2::{Digest, Sha256, Sha512};
 use std::collections::HashMap;
 
-pub async fn verify_with_checksum_text(asset: &Asset, checksum_text: &str) -> Result<()> {
+pub(super) async fn verify_with_checksum_text(asset: &Asset, checksum_text: &str) -> Result<()> {
     info!("Verifying asset with provided checksum text");
 
     let (algorithm, expected_hash) = parse_checksum_text(checksum_text)?;
@@ -23,7 +23,11 @@ pub async fn verify_with_checksum_text(asset: &Asset, checksum_text: &str) -> Re
     }
 }
 
-pub async fn verify_asset(assets: &[Asset], asset: &Asset, gpg_key: Option<&str>) -> Result<()> {
+pub(super) async fn verify_asset(
+    assets: &[Asset],
+    asset: &Asset,
+    gpg_key: Option<&str>,
+) -> Result<()> {
     info!("Verifying asset");
 
     if let Some(sig_asset) = find_signature_asset(assets, asset) {
