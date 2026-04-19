@@ -1,4 +1,5 @@
-use anyhow::{Context, Result};
+use crate::utils;
+use anyhow::Result;
 use log::info;
 
 pub(super) fn install(packages: &[String]) -> Result<()> {
@@ -16,28 +17,24 @@ pub(super) fn install(packages: &[String]) -> Result<()> {
 
 fn update() -> Result<()> {
     info!("Updating Homebrew");
-    std::process::Command::new("brew")
-        .arg("update")
-        .output()
-        .context("Failed to update Homebrew")?;
+    let mut cmd = std::process::Command::new("brew");
+    cmd.arg("update");
+    utils::subprocess::run_command(&mut cmd, "Update Homebrew")?;
     Ok(())
 }
 
 fn install_packages(packages: &[String]) -> Result<()> {
     info!("Installing Homebrew packages: {:?}", packages);
-    std::process::Command::new("brew")
-        .args(["install"])
-        .args(packages)
-        .output()
-        .context("Failed to install Homebrew packages")?;
+    let mut cmd = std::process::Command::new("brew");
+    cmd.args(["install"]).args(packages);
+    utils::subprocess::run_command(&mut cmd, "Install Homebrew packages")?;
     Ok(())
 }
 
 fn cleanup() -> Result<()> {
     info!("Cleaning up Homebrew cache");
-    std::process::Command::new("brew")
-        .arg("cleanup")
-        .output()
-        .context("Failed to clean up Homebrew cache")?;
+    let mut cmd = std::process::Command::new("brew");
+    cmd.arg("cleanup");
+    utils::subprocess::run_command(&mut cmd, "Clean up Homebrew cache")?;
     Ok(())
 }

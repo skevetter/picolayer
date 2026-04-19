@@ -1,5 +1,5 @@
 use crate::utils;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use log::{info, warn};
 
 use super::PackageManagerConfig;
@@ -47,27 +47,24 @@ pub(super) fn install_aptitude(packages: &[String]) -> Result<()> {
 
 fn update_repositories() -> Result<()> {
     info!("Updating repositories");
-    utils::sudo::command("apt-get")
-        .args(["update", "-y"])
-        .output()
-        .context("Failed to update repositories")?;
+    let mut cmd = utils::sudo::command("apt-get");
+    cmd.args(["update", "-y"]);
+    utils::subprocess::run_command(&mut cmd, "Update repositories")?;
     Ok(())
 }
 
 fn install_ppa_support() -> Result<()> {
     info!("Installing PPA support packages");
-    utils::sudo::command("apt-get")
-        .args(["install", "-y", "--no-install-recommends"])
-        .args(PPA_SUPPORT_PACKAGES)
-        .output()
-        .context("Failed to install PPA support packages")?;
+    let mut cmd = utils::sudo::command("apt-get");
+    cmd.args(["install", "-y", "--no-install-recommends"])
+        .args(PPA_SUPPORT_PACKAGES);
+    utils::subprocess::run_command(&mut cmd, "Install PPA support packages")?;
 
     if utils::os::is_debian() {
-        utils::sudo::command("apt-get")
-            .args(["install", "-y", "--no-install-recommends"])
-            .args(PPA_SUPPORT_PACKAGES_DEBIAN)
-            .output()
-            .context("Failed to install Debian PPA support packages")?;
+        let mut cmd = utils::sudo::command("apt-get");
+        cmd.args(["install", "-y", "--no-install-recommends"])
+            .args(PPA_SUPPORT_PACKAGES_DEBIAN);
+        utils::subprocess::run_command(&mut cmd, "Install Debian PPA support packages")?;
     }
     Ok(())
 }
@@ -75,57 +72,50 @@ fn install_ppa_support() -> Result<()> {
 fn add_ppas(ppas: &[String]) -> Result<()> {
     for ppa in ppas {
         info!("Adding PPA: {}", ppa);
-        utils::sudo::command("add-apt-repository")
-            .args(["-y", ppa])
-            .output()
-            .with_context(|| format!("Failed to add PPA: {}", ppa))?;
+        let mut cmd = utils::sudo::command("add-apt-repository");
+        cmd.args(["-y", ppa]);
+        utils::subprocess::run_command(&mut cmd, &format!("Add PPA: {}", ppa))?;
     }
     Ok(())
 }
 
 fn install_packages(tool: &str, packages: &[String]) -> Result<()> {
     info!("Installing packages with {}: {:?}", tool, packages);
-    utils::sudo::command(tool)
-        .args(["install", "-y", "--no-install-recommends"])
-        .args(packages)
-        .output()
-        .context("Failed to install packages")?;
+    let mut cmd = utils::sudo::command(tool);
+    cmd.args(["install", "-y", "--no-install-recommends"])
+        .args(packages);
+    utils::subprocess::run_command(&mut cmd, "Install packages")?;
     Ok(())
 }
 
 fn install_aptitude_tool() -> Result<()> {
     info!("Installing aptitude");
-    utils::sudo::command("apt-get")
-        .args(["install", "-y", "--no-install-recommends", "aptitude"])
-        .output()
-        .context("Failed to install aptitude")?;
+    let mut cmd = utils::sudo::command("apt-get");
+    cmd.args(["install", "-y", "--no-install-recommends", "aptitude"]);
+    utils::subprocess::run_command(&mut cmd, "Install aptitude")?;
     Ok(())
 }
 
 fn install_packages_aptitude(packages: &[String]) -> Result<()> {
     info!("Installing packages with aptitude: {:?}", packages);
-    utils::sudo::command("aptitude")
-        .args(["install", "-y"])
-        .args(packages)
-        .output()
-        .context("Failed to install packages with aptitude")?;
+    let mut cmd = utils::sudo::command("aptitude");
+    cmd.args(["install", "-y"]).args(packages);
+    utils::subprocess::run_command(&mut cmd, "Install packages with aptitude")?;
     Ok(())
 }
 
 fn cleanup() -> Result<()> {
     info!("Cleaning package cache");
-    utils::sudo::command("apt-get")
-        .args(["clean"])
-        .output()
-        .context("Failed to clean package cache")?;
+    let mut cmd = utils::sudo::command("apt-get");
+    cmd.args(["clean"]);
+    utils::subprocess::run_command(&mut cmd, "Clean package cache")?;
     Ok(())
 }
 
 fn cleanup_aptitude() -> Result<()> {
     info!("Cleaning aptitude cache");
-    utils::sudo::command("aptitude")
-        .args(["clean"])
-        .output()
-        .context("Failed to clean aptitude cache")?;
+    let mut cmd = utils::sudo::command("aptitude");
+    cmd.args(["clean"]);
+    utils::subprocess::run_command(&mut cmd, "Clean aptitude cache")?;
     Ok(())
 }
