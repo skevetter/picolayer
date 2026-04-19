@@ -8,13 +8,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Resolve package dependencies using libpkgx
-pub(super) fn resolve_package_with_libpkgx(
+pub(super) async fn resolve_package_with_libpkgx(
     dependencies: &[String],
 ) -> Result<(HashMap<String, String>, Vec<libpkgx::types::Installation>)> {
-    let rt = tokio::runtime::Runtime::new()
-        .context("Failed to create Tokio runtime for libpkgx operations")?;
-
-    rt.block_on(async { resolve_dependencies_async(dependencies).await })
+    resolve_dependencies_async(dependencies).await
 }
 
 async fn resolve_dependencies_async(
@@ -150,7 +147,7 @@ fn map_tool_to_project(tool_name: &str, conn: &rusqlite::Connection) -> Result<S
 }
 
 /// Resolve a tool name to a project name
-pub(super) fn resolve_tool_to_project(tool_name: &str) -> Result<String> {
+pub(super) async fn resolve_tool_to_project(tool_name: &str) -> Result<String> {
     assert!(std::env::var("PKGX_DIR").is_ok());
     assert!(std::env::var("PKGX_PANTRY_DIR").is_ok());
     let config = Config::new().context("Failed to initialize libpkgx config")?;
@@ -160,13 +157,9 @@ pub(super) fn resolve_tool_to_project(tool_name: &str) -> Result<String> {
     // Sync if needed
     if sync::should(&config).map_err(|e| anyhow::anyhow!("{}", e))? {
         info!("Syncing pkgx pantry database");
-        let rt =
-            tokio::runtime::Runtime::new().context("Failed to create Tokio runtime for sync")?;
-        rt.block_on(async {
-            sync::ensure(&config, &mut conn)
-                .await
-                .map_err(|e| anyhow::anyhow!("{}", e))
-        })?;
+        sync::ensure(&config, &mut conn)
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
     }
 
     map_tool_to_project(tool_name, &conn)

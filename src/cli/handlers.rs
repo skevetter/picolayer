@@ -159,7 +159,7 @@ pub async fn handle_command(command: Commands, retry_config: &RetryConfig) -> Re
                 working_dir: &working_dir,
                 env_vars: env,
             };
-            installers::pkgx::execute(&config)
+            installers::pkgx::execute(&config).await
         }
     }
 }
