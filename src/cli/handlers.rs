@@ -4,7 +4,7 @@ use crate::installers;
 use crate::utils;
 use anyhow::Result;
 
-pub fn handle_command(command: Commands, retry_config: &RetryConfig) -> Result<()> {
+pub async fn handle_command(command: Commands, retry_config: &RetryConfig) -> Result<()> {
     match command {
         Commands::AptGet { packages, ppa_args } => {
             anyhow::ensure!(
@@ -107,11 +107,7 @@ pub fn handle_command(command: Commands, retry_config: &RetryConfig) -> Result<(
                 registry_token: registry_token.as_deref(),
             };
 
-            let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(installers::devcontainer_feature::install_async(
-                &config,
-                retry_config,
-            ))
+            installers::devcontainer_feature::install_async(&config, retry_config).await
         }
 
         Commands::GhRelease {
@@ -132,8 +128,7 @@ pub fn handle_command(command: Commands, retry_config: &RetryConfig) -> Result<(
             );
             let binary_list = normalize_package_list(&binary.unwrap_or_else(|| repo.clone()));
 
-            let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(installers::gh_release::install(
+            installers::gh_release::install(
                 &installers::gh_release::GhReleaseConfig {
                     owner: &owner,
                     repo: &repo,
@@ -147,7 +142,8 @@ pub fn handle_command(command: Commands, retry_config: &RetryConfig) -> Result<(
                     include_prerelease,
                 },
                 retry_config,
-            ))
+            )
+            .await
         }
         Commands::Pkgx {
             tool,
@@ -163,7 +159,7 @@ pub fn handle_command(command: Commands, retry_config: &RetryConfig) -> Result<(
                 working_dir: &working_dir,
                 env_vars: env,
             };
-            installers::pkgx::execute(&config)
+            installers::pkgx::execute(&config).await
         }
     }
 }

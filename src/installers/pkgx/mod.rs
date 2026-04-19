@@ -45,7 +45,7 @@ impl PkgxEnv {
     }
 }
 
-pub fn execute(input: &PkgxConfig) -> Result<()> {
+pub async fn execute(input: &PkgxConfig<'_>) -> Result<()> {
     validate_working_directory(input.working_dir)?;
     debug!("Working directory: {}", input.working_dir);
     debug!("Tool: {} ({})", input.tool, input.version);
@@ -76,7 +76,8 @@ pub fn execute(input: &PkgxConfig) -> Result<()> {
         working_path,
         &env_map,
         &exec_env,
-    );
+    )
+    .await;
 
     // Restore original environment variables
     unsafe {
@@ -137,7 +138,7 @@ fn create_command_env(
     cmd_env
 }
 
-fn execute_with_pkgx_library(
+async fn execute_with_pkgx_library(
     tool_name: &str,
     version_spec: &str,
     args: &[String],
@@ -148,12 +149,13 @@ fn execute_with_pkgx_library(
     info!("Using pkgx library integration with virtual environment");
 
     let project_name = resolver::resolve_tool_to_project(tool_name)
+        .await
         .context("Failed to resolve tool to project using pkgx")?;
 
     let tool_spec = resolver::format_tool_spec(&project_name, version_spec);
     info!("Resolving package: {}", tool_spec);
 
-    match resolver::resolve_package_with_libpkgx(&[tool_spec]) {
+    match resolver::resolve_package_with_libpkgx(&[tool_spec]).await {
         Ok((pkgx_env, installations)) => {
             let mut cmd_env = create_command_env(env_map, &exec_env.pkgx_dir, &exec_env.pantry_dir);
             cmd_env.extend(pkgx_env);
@@ -191,6 +193,7 @@ fn execute_with_pkgx_library(
                     env_map,
                     exec_env,
                 )
+                .await
             } else {
                 anyhow::bail!(
                     "Failed to resolve package with libpkgx and no pkgx binary available: {}",
@@ -221,7 +224,7 @@ fn log_installations(
     }
 }
 
-fn execute_with_pkgx_binary(
+async fn execute_with_pkgx_binary(
     tool_name: &str,
     version_spec: &str,
     args: &[String],
@@ -234,6 +237,7 @@ fn execute_with_pkgx_binary(
     }
 
     let project_name = resolver::resolve_tool_to_project(tool_name)
+        .await
         .context("Failed to resolve tool to project using pkgx")?;
 
     let project_arg = resolver::format_project_arg(&project_name, version_spec);
