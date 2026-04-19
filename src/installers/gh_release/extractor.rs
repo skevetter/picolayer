@@ -91,7 +91,7 @@ fn extract_archive(archive_data: &[u8], binary_names: &[String], bin_location: &
     } else if is_gzip_archive(archive_data) {
         extract_tar_gz(archive_data, binary_names, bin_location, &temp_dir)
     } else {
-        anyhow::bail!("Unsupported archive format")
+        anyhow::bail!("Unsupported archive format. Supported formats: tar.gz, tgz, tar.xz")
     }
 }
 
@@ -126,12 +126,7 @@ fn extract_raw_binary(
 }
 
 fn is_archive(filename: &str) -> bool {
-    filename.ends_with(".tar.gz")
-        || filename.ends_with(".tgz")
-        || filename.ends_with(".tar.xz")
-        || filename.ends_with(".zip")
-        || filename.ends_with(".tar.bz2")
-        || filename.ends_with(".7z")
+    filename.ends_with(".tar.gz") || filename.ends_with(".tgz") || filename.ends_with(".tar.xz")
 }
 
 fn is_tar_xz_archive(data: &[u8]) -> bool {
@@ -295,6 +290,11 @@ fn find_and_install_binaries(
     binary_names: &[String],
     bin_location: &str,
 ) -> Result<()> {
+    use std::collections::HashMap;
+
+    // Collect all matching binaries, preferring shallower paths (root-level)
+    let mut best_matches: HashMap<String, (usize, std::path::PathBuf)> = HashMap::new();
+
     for entry in walkdir::WalkDir::new(extract_dir).max_depth(10) {
         let entry = entry?;
         // Skip symlinks to prevent symlink-following attacks
@@ -315,22 +315,32 @@ fn find_and_install_binaries(
                     continue;
                 }
 
-                let source_path = entry.path();
-                let dest_path = std::path::Path::new(bin_location).join(&file_name);
+                let depth = entry.depth();
+                let should_replace = best_matches
+                    .get(&file_name)
+                    .is_none_or(|(prev_depth, _)| depth < *prev_depth);
 
-                fs::copy(source_path, &dest_path)?;
-
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    let mut perms = fs::metadata(&dest_path)?.permissions();
-                    perms.set_mode(0o755);
-                    fs::set_permissions(&dest_path, perms)?;
+                if should_replace {
+                    best_matches.insert(file_name, (depth, entry.path().to_path_buf()));
                 }
-
-                info!("Installed: {} -> {}", file_name, dest_path.display());
             }
         }
+    }
+
+    for (file_name, (_, source_path)) in &best_matches {
+        let dest_path = std::path::Path::new(bin_location).join(file_name);
+
+        fs::copy(source_path, &dest_path)?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&dest_path)?.permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&dest_path, perms)?;
+        }
+
+        info!("Installed: {} -> {}", file_name, dest_path.display());
     }
 
     Ok(())
@@ -381,37 +391,24 @@ mod tests {
 
     #[test]
     fn is_archive_recognises_supported_extensions() {
-        let archives = [
-            "tool.tar.gz",
-            "tool.tgz",
-            "tool.tar.xz",
-            "tool.zip",
-            "tool.tar.bz2",
-            "tool.7z",
-        ];
-        for name in &archives {
-            assert!(is_archive(name), "{name} should be recognised as archive");
-        }
+        assert!(is_archive("tool.tar.gz"));
+        assert!(is_archive("tool.tgz"));
+        assert!(is_archive("tool.tar.xz"));
     }
 
     #[test]
-    fn is_archive_rejects_non_archives() {
-        let non_archives = [
-            "tool", "tool.exe", "tool.deb", "tool.rpm", "tool.dmg", "tool.txt",
-        ];
-        for name in &non_archives {
-            assert!(
-                !is_archive(name),
-                "{name} should NOT be recognised as archive"
-            );
-        }
+    fn is_archive_rejects_unsupported() {
+        assert!(!is_archive("tool.zip"));
+        assert!(!is_archive("tool.tar.bz2"));
+        assert!(!is_archive("tool.7z"));
+        assert!(!is_archive("tool.exe"));
+        assert!(!is_archive("README.md"));
     }
 
     // ── is_tar_xz_archive ──────────────────────────────────────────────
 
     #[test]
     fn is_tar_xz_archive_valid_magic_bytes() {
-        // XZ magic: 0xFD + "7zXZ\0"
         let valid: Vec<u8> = vec![0xFD, b'7', b'z', b'X', b'Z', 0x00, 0x01, 0x02];
         assert!(is_tar_xz_archive(&valid));
     }
@@ -474,12 +471,6 @@ mod tests {
             matches!(create_extractor(&asset), AssetExtractor::Archive),
             "tar.gz asset should produce Archive extractor"
         );
-
-        let asset = mock_asset("tool.zip");
-        assert!(
-            matches!(create_extractor(&asset), AssetExtractor::Archive),
-            "zip asset should produce Archive extractor"
-        );
     }
 
     #[test]
@@ -495,5 +486,32 @@ mod tests {
             matches!(create_extractor(&asset), AssetExtractor::RawBinary),
             "exe asset should produce RawBinary extractor"
         );
+    }
+
+    // ── find_and_install_binaries ──────────────────────────────────────
+
+    #[test]
+    fn find_and_install_prefers_shallow_binary() {
+        let temp = tempfile::tempdir().unwrap();
+        let extract_dir = temp.path().join("extract");
+        let bin_dir = temp.path().join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+
+        // Create binary at two depths
+        let shallow = extract_dir.join("mytool");
+        let deep = extract_dir.join("sub/dir/mytool");
+        fs::create_dir_all(deep.parent().unwrap()).unwrap();
+        fs::write(&shallow, b"shallow-version").unwrap();
+        fs::write(&deep, b"deep-version").unwrap();
+
+        find_and_install_binaries(
+            &extract_dir,
+            &["mytool".to_string()],
+            bin_dir.to_str().unwrap(),
+        )
+        .unwrap();
+
+        let installed = fs::read(bin_dir.join("mytool")).unwrap();
+        assert_eq!(installed, b"shallow-version");
     }
 }
