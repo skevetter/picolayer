@@ -131,11 +131,13 @@ pub fn check_binary_version(binary_path: &str, expected_substring: Option<&str>)
     let output = Command::new(binary_path).arg("--version").output();
 
     if let Ok(output) = output {
-        let version_str = String::from_utf8_lossy(&output.stdout);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let combined = format!("{}{}", stdout, stderr);
         if let Some(expected) = expected_substring {
-            version_str.contains(expected)
+            combined.contains(expected)
         } else {
-            !version_str.is_empty()
+            output.status.success() || !combined.is_empty()
         }
     } else {
         false
