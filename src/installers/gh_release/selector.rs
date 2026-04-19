@@ -21,7 +21,7 @@ impl AssetSelector for FilterSelector {
         let regex = Regex::new(&self.pattern).context("Invalid filter pattern")?;
         assets
             .iter()
-            .find(|a| regex.is_match(&a.name))
+            .find(|a| regex.is_match(&a.name) && !is_signature_file(&a.name))
             .context("No asset matching filter pattern")
     }
 }
@@ -105,6 +105,18 @@ fn is_archive(filename: &str) -> bool {
         || filename.ends_with(".zip")
         || filename.ends_with(".tar.bz2")
         || filename.ends_with(".7z")
+}
+
+fn is_signature_file(filename: &str) -> bool {
+    let lower = filename.to_lowercase();
+    lower.ends_with(".asc")
+        || lower.ends_with(".sig")
+        || lower.ends_with(".sha256")
+        || lower.ends_with(".sha256sum")
+        || lower.ends_with(".sha512")
+        || lower.ends_with(".sha512sum")
+        || lower.ends_with(".md5")
+        || lower.ends_with(".md5sum")
 }
 
 fn is_platform_binary(filename: &str) -> bool {
