@@ -41,6 +41,7 @@ anyhow = "1.0.100"
 clap = { version = "4.5.48", features = ["derive"] }
 env_logger = "0.11"
 flate2 = "1.1.4"
+futures-util = "0.3"
 hex = "0.4.3"
 indicatif = "0.18"
 libpkgx = "0.8.2"
@@ -52,6 +53,7 @@ regex = "1.11.3"
 reqwest = { version = "0.13", features = [
     "json",
     "rustls",
+    "stream",
     "webpki-roots",
 ], default-features = false }
 rusqlite = "0.39.0"

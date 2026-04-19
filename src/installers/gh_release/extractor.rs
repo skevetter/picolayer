@@ -1,5 +1,7 @@
 use anyhow::Result;
-use log::{info, warn};
+use futures_util::StreamExt;
+use indicatif::{ProgressBar, ProgressStyle};
+use log::{LevelFilter, info, warn};
 use octocrab::models::repos::Asset;
 use std::fs::{self, File};
 use std::io::{BufReader, Write};
@@ -62,25 +64,58 @@ async fn download_asset_data(asset: &Asset) -> Result<Vec<u8>> {
         anyhow::bail!("Failed to download asset: {}", response.status());
     }
 
+    let content_length = response.content_length();
+
     // Check content-length header before downloading the full body
-    if let Some(content_length) = response.content_length() {
-        if content_length > MAX_DOWNLOAD_SIZE {
+    if let Some(len) = content_length {
+        if len > MAX_DOWNLOAD_SIZE {
             anyhow::bail!(
                 "Asset too large: {} bytes (max {} bytes)",
-                content_length,
+                len,
                 MAX_DOWNLOAD_SIZE
             );
         }
     }
 
-    let bytes = response.bytes().await?;
+    let show_progress = log::max_level() >= LevelFilter::Info;
+    let pb = if show_progress {
+        if let Some(len) = content_length {
+            let bar = ProgressBar::new(len);
+            bar.set_style(
+                ProgressStyle::with_template(
+                    "{spinner:.green} [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec})",
+                )
+                .unwrap()
+                .progress_chars("#>-"),
+            );
+            bar
+        } else {
+            let bar = ProgressBar::new_spinner();
+            bar.set_style(
+                ProgressStyle::with_template("{spinner:.green} {bytes} ({bytes_per_sec})").unwrap(),
+            );
+            bar
+        }
+    } else {
+        ProgressBar::hidden()
+    };
 
-    // Also check after downloading in case Content-Length was missing or inaccurate
-    if bytes.len() as u64 > MAX_DOWNLOAD_SIZE {
-        anyhow::bail!("Downloaded asset exceeds size limit");
+    let mut data = Vec::with_capacity(content_length.unwrap_or(0) as usize);
+    let mut stream = response.bytes_stream();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        data.extend_from_slice(&chunk);
+        pb.inc(chunk.len() as u64);
+
+        if data.len() as u64 > MAX_DOWNLOAD_SIZE {
+            pb.finish_and_clear();
+            anyhow::bail!("Downloaded asset exceeds size limit");
+        }
     }
 
-    Ok(bytes.to_vec())
+    pb.finish_and_clear();
+    Ok(data)
 }
 
 fn extract_archive(archive_data: &[u8], binary_names: &[String], bin_location: &str) -> Result<()> {
