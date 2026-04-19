@@ -54,12 +54,33 @@ pub async fn extract_and_install(
     extractor.extract(asset, binary_names, bin_location).await
 }
 
+const MAX_DOWNLOAD_SIZE: u64 = 500 * 1024 * 1024; // 500MB limit
+
 async fn download_asset_data(asset: &Asset) -> Result<Vec<u8>> {
     let response = reqwest::get(asset.browser_download_url.clone()).await?;
     if !response.status().is_success() {
         anyhow::bail!("Failed to download asset: {}", response.status());
     }
-    Ok(response.bytes().await?.to_vec())
+
+    // Check content-length header before downloading the full body
+    if let Some(content_length) = response.content_length() {
+        if content_length > MAX_DOWNLOAD_SIZE {
+            anyhow::bail!(
+                "Asset too large: {} bytes (max {} bytes)",
+                content_length,
+                MAX_DOWNLOAD_SIZE
+            );
+        }
+    }
+
+    let bytes = response.bytes().await?;
+
+    // Also check after downloading in case Content-Length was missing or inaccurate
+    if bytes.len() as u64 > MAX_DOWNLOAD_SIZE {
+        anyhow::bail!("Downloaded asset exceeds size limit");
+    }
+
+    Ok(bytes.to_vec())
 }
 
 fn extract_archive(archive_data: &[u8], binary_names: &[String], bin_location: &str) -> Result<()> {
@@ -291,6 +312,12 @@ fn find_and_install_binaries(
             let file_name = entry.file_name().to_str().unwrap_or("").to_string();
 
             if binary_names.iter().any(|name| name == &file_name) {
+                // Skip zero-byte files
+                if entry.metadata()?.len() == 0 {
+                    log::warn!("Skipping zero-byte file: {}", file_name);
+                    continue;
+                }
+
                 let source_path = entry.path();
                 let dest_path = std::path::Path::new(bin_location).join(&file_name);
 
