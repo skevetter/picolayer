@@ -1,9 +1,9 @@
 use anyhow::Result;
-use log::info;
+use log::{info, warn};
 use octocrab::models::repos::Asset;
 use std::fs::{self, File};
 use std::io::{BufReader, Write};
-use std::path::Path;
+use std::path::{Component, Path};
 
 pub enum AssetExtractor {
     Archive,
@@ -121,6 +121,38 @@ fn is_gzip_archive(data: &[u8]) -> bool {
     data.len() >= 2 && data[0] == 0x1f && data[1] == 0x8b
 }
 
+/// Validates that a tar entry path is safe to extract into the given directory.
+/// Returns `true` only if the path contains no `..` components and, once joined
+/// with `extract_dir`, stays within `extract_dir`.
+fn validate_tar_entry_path(entry_path: &Path, extract_dir: &Path) -> bool {
+    // Reject any path that contains a parent-directory component
+    for component in entry_path.components() {
+        if matches!(component, Component::ParentDir) {
+            return false;
+        }
+    }
+
+    // Ensure the fully-resolved destination stays within extract_dir
+    let dest = extract_dir.join(entry_path);
+    match dest.canonicalize() {
+        Ok(canonical) => canonical.starts_with(extract_dir),
+        // The file may not exist yet (we haven't extracted it); fall back to
+        // a lexical check on the normalized join.
+        Err(_) => {
+            // If we can canonicalize the extract_dir itself, do a prefix check
+            // on the joined (non-canonicalized) path.
+            if let Ok(canonical_base) = extract_dir.canonicalize() {
+                // Build the destination without symlink resolution
+                let normalized = canonical_base.join(entry_path);
+                // Simple prefix check — safe because we already rejected `..`
+                normalized.starts_with(&canonical_base)
+            } else {
+                false
+            }
+        }
+    }
+}
+
 fn extract_tar_gz(
     archive_data: &[u8],
     binary_names: &[String],
@@ -141,9 +173,31 @@ fn extract_tar_gz(
 
     fs::create_dir_all(bin_location)?;
 
+    let extract_dir = temp_dir.path();
+
     for entry in archive.entries()? {
         let mut entry = entry?;
-        let path = entry.path()?;
+        let path = entry.path()?.to_path_buf();
+
+        // Skip symlinks to prevent symlink attacks
+        let entry_type = entry.header().entry_type();
+        if entry_type.is_symlink() || entry_type.is_hard_link() {
+            warn!(
+                "Skipping symlink/hardlink entry in tar.gz archive: {}",
+                path.display()
+            );
+            continue;
+        }
+
+        // Validate path to prevent path traversal
+        if !validate_tar_entry_path(&path, extract_dir) {
+            warn!(
+                "Skipping tar.gz entry with unsafe path: {}",
+                path.display()
+            );
+            continue;
+        }
+
         let file_name = path
             .file_name()
             .and_then(|s| s.to_str())
@@ -153,11 +207,9 @@ fn extract_tar_gz(
         log::debug!(
             "Processing entry: {} (type: {:?})",
             path.display(),
-            entry.header().entry_type()
+            entry_type
         );
-        if entry.header().entry_type().is_file()
-            && binary_names.iter().any(|name| name == &file_name)
-        {
+        if entry_type.is_file() && binary_names.iter().any(|name| name == &file_name) {
             log::debug!("Found matching binary: {} -> {}", file_name, path.display());
             install_binary(&mut entry, &file_name, bin_location)?;
         }
@@ -183,7 +235,41 @@ fn extract_tar_xz(
     let xz_decoder = XzDecoder::new(cursor);
     let mut archive = Archive::new(xz_decoder);
 
-    archive.unpack(&extract_dir)?;
+    // Manually iterate entries instead of archive.unpack() to validate each path
+    for entry in archive.entries()? {
+        let mut entry = entry?;
+        let path = entry.path()?.to_path_buf();
+
+        // Skip symlinks to prevent symlink attacks
+        let entry_type = entry.header().entry_type();
+        if entry_type.is_symlink() || entry_type.is_hard_link() {
+            warn!(
+                "Skipping symlink/hardlink entry in tar.xz archive: {}",
+                path.display()
+            );
+            continue;
+        }
+
+        // Validate path to prevent path traversal
+        if !validate_tar_entry_path(&path, &extract_dir) {
+            warn!(
+                "Skipping tar.xz entry with unsafe path: {}",
+                path.display()
+            );
+            continue;
+        }
+
+        let dest = extract_dir.join(&path);
+        if entry_type.is_dir() {
+            fs::create_dir_all(&dest)?;
+        } else if entry_type.is_file() {
+            if let Some(parent) = dest.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            entry.unpack(&dest)?;
+        }
+    }
+
     find_and_install_binaries(&extract_dir, binary_names, bin_location)?;
 
     Ok(())
@@ -194,8 +280,13 @@ fn find_and_install_binaries(
     binary_names: &[String],
     bin_location: &str,
 ) -> Result<()> {
-    for entry in walkdir::WalkDir::new(extract_dir) {
+    for entry in walkdir::WalkDir::new(extract_dir).max_depth(10) {
         let entry = entry?;
+        // Skip symlinks to prevent symlink-following attacks
+        if entry.file_type().is_symlink() {
+            warn!("Skipping symlink during binary search: {}", entry.path().display());
+            continue;
+        }
         if entry.file_type().is_file() {
             let file_name = entry.file_name().to_str().unwrap_or("").to_string();
 
