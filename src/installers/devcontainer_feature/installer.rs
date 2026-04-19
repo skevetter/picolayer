@@ -78,6 +78,21 @@ fn load_feature_metadata(feature_dir: &Path) -> Result<Feature> {
     Ok(feature)
 }
 
+/// Safely resolve the home directory for a user via `getent passwd` instead of
+/// shell interpolation (`eval echo ~user`) which is vulnerable to command injection.
+fn get_home_dir_for_user(user: &str) -> Option<String> {
+    let output = Command::new("getent")
+        .args(["passwd", user])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let line = String::from_utf8_lossy(&output.stdout);
+    // getent passwd format: name:password:uid:gid:gecos:home:shell
+    line.trim().split(':').nth(5).map(|s| s.to_string())
+}
+
 fn resolve_remote_user(remote_user: Option<&str>) -> Result<(String, String)> {
     if let Some(user) = remote_user
         && let Ok(output) = Command::new("id").arg("-u").arg(user).output()
@@ -86,13 +101,7 @@ fn resolve_remote_user(remote_user: Option<&str>) -> Result<(String, String)> {
         if let Ok(home) = std::env::var("HOME") {
             return Ok((user.to_string(), home));
         }
-        if let Ok(output) = Command::new("sh")
-            .arg("-c")
-            .arg(format!("eval echo ~{}", user))
-            .output()
-            && output.status.success()
-        {
-            let home = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if let Some(home) = get_home_dir_for_user(user) {
             return Ok((user.to_string(), home));
         }
 
@@ -102,13 +111,8 @@ fn resolve_remote_user(remote_user: Option<&str>) -> Result<(String, String)> {
     for user in ORDERED_BASE_USERS {
         if let Ok(output) = Command::new("id").arg("-u").arg(user).output()
             && output.status.success()
-            && let Ok(output) = Command::new("sh")
-                .arg("-c")
-                .arg(format!("eval echo ~{}", user))
-                .output()
-            && output.status.success()
+            && let Some(home) = get_home_dir_for_user(user)
         {
-            let home = String::from_utf8_lossy(&output.stdout).trim().to_string();
             return Ok((user.to_string(), home));
         }
     }
@@ -118,13 +122,7 @@ fn resolve_remote_user(remote_user: Option<&str>) -> Result<(String, String)> {
         && output.status.success()
     {
         let user = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if let Ok(output) = Command::new("sh")
-            .arg("-c")
-            .arg(format!("eval echo ~{}", user))
-            .output()
-            && output.status.success()
-        {
-            let home = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if let Some(home) = get_home_dir_for_user(&user) {
             return Ok((user, home));
         }
     }
@@ -152,24 +150,17 @@ fn execute_install_script(
         fs::set_permissions(&install_script, perms)?;
     }
 
-    let env_string: Vec<String> = env_vars
-        .iter()
-        .map(|(k, v)| format!("{}=\"{}\"", k, v.replace("\"", "\\\"")))
-        .collect();
-
-    let env_prefix = env_string.join(" ");
-    let command = format!(
-        "cd {} && {} bash -i +H -x ./{}",
+    debug!(
+        "Executing: ./{} in {} with {} env vars",
+        script_name,
         feature_dir.display(),
-        env_prefix,
-        script_name
+        env_vars.len()
     );
 
-    debug!("Executing: {}", command);
-
-    let output = Command::new("sh")
-        .arg("-c")
-        .arg(&command)
+    let output = Command::new("bash")
+        .args(["-i", "+H", "-x", &format!("./{}", script_name)])
+        .current_dir(feature_dir)
+        .envs(env_vars)
         .output()
         .context("Failed to execute install script")?;
 
@@ -219,6 +210,12 @@ fn set_container_env(feature: &Feature) -> Result<()> {
     Ok(())
 }
 
+/// Execute the feature entrypoint defined in devcontainer-feature.json.
+///
+/// TRUST BOUNDARY: The entrypoint is a shell command from the feature metadata JSON,
+/// which is downloaded from a container registry. The devcontainer spec explicitly
+/// defines entrypoints as shell commands, so shell execution here is intentional.
+/// Security relies on the caller verifying the feature source (registry + signature).
 fn execute_entrypoint(feature: &Feature) -> Result<()> {
     if let Some(entrypoint) = &feature.entrypoint {
         info!("Executing feature entrypoint: {}", entrypoint);
@@ -236,4 +233,41 @@ fn execute_entrypoint(feature: &Feature) -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_home_dir_for_user_returns_none_for_nonexistent_user() {
+        // A user that almost certainly doesn't exist
+        let result = get_home_dir_for_user("__picolayer_nonexistent_test_user_12345__");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn get_home_dir_for_user_returns_some_for_root() {
+        // root should exist on all Unix systems
+        let result = get_home_dir_for_user("root");
+        assert!(result.is_some());
+        let home = result.unwrap();
+        assert!(!home.is_empty());
+        // root's home is typically /root but could vary
+        assert!(
+            home.starts_with('/'),
+            "Home dir should be an absolute path: {home}"
+        );
+    }
+
+    #[test]
+    fn get_home_dir_for_user_rejects_shell_metacharacters() {
+        // Even if someone passes shell metacharacters, getent treats them as literal
+        // username characters, so it will just fail to find the user (returns None)
+        let result = get_home_dir_for_user("root; echo pwned");
+        assert!(
+            result.is_none(),
+            "Shell metacharacters should not match any user"
+        );
+    }
 }
