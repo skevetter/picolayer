@@ -38,6 +38,14 @@ pub struct Cli {
     /// Multiplier for exponential backoff (default: 2.0)
     #[arg(long, global = true, default_value = "2.0")]
     pub retry_backoff_multiplier: f64,
+
+    /// Increase logging verbosity (-v for info, -vv for debug, -vvv for trace)
+    #[arg(short = 'v', long = "verbose", global = true, action = clap::ArgAction::Count)]
+    pub verbose: u8,
+
+    /// Suppress all output except errors
+    #[arg(short = 'q', long = "quiet", global = true, conflicts_with = "verbose")]
+    pub quiet: bool,
 }
 
 #[derive(Subcommand)]

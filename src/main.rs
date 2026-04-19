@@ -4,6 +4,7 @@ mod installers;
 mod utils;
 
 use anyhow::{Context, Result};
+use clap::Parser;
 use error::PicolayerError;
 use log::info;
 use std::process;
@@ -22,8 +23,9 @@ async fn main() {
 }
 
 async fn run() -> Result<()> {
-    utils::logging::init_logging().context("Failed to initialize logging")?;
+    let cli = cli::Cli::parse();
+    utils::logging::init_logging(cli.verbose, cli.quiet).context("Failed to initialize logging")?;
     info!("Starting picolayer");
-    cli::run().await?;
+    cli::run(cli).await?;
     Ok(())
 }
