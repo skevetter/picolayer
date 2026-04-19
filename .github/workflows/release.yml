@@ -20,7 +20,7 @@ jobs:
       new-release-version: ${{ steps.semantic.outputs.new_release_version }}
     steps:
       - name: bitwarden secrets
-        uses: bitwarden/sm-action@v2
+        uses: bitwarden/sm-action@v3
         with:
           access_token: ${{ secrets.BITWARDEN_SECRETS_ACCESS_TOKEN }}
           secrets: |
