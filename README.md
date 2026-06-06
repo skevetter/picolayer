@@ -36,19 +36,24 @@ Refer to these examples to integrate the [Picolayer feature](https://github.com/
 cargo install --git https://github.com/skevetter/picolayer
 ```
 
-### From binary
+### Install script
 
-Download the latest release from the [releases page](https://github.com/skevetter/picolayer/releases).
-
-_Or download as a one-liner_
+The install script detects your OS and architecture (x86_64 and aarch64/arm64 are supported) and installs the matching release binary.
 
 ```bash
-curl -L https://github.com/skevetter/picolayer/releases/latest/download/picolayer-x86_64-unknown-linux-gnu.tar.gz | tar -xz && chmod +x picolayer && \
-./picolayer \
-    devcontainer-feature \
-    "ghcr.io/devcontainers-extra/features/bash-command:1" \
-    --option command="curl https://pkgx.sh | sh"
+curl -fsSL https://raw.githubusercontent.com/skevetter/picolayer/main/install.sh | bash
 ```
+
+Override the version or install directory with environment variables:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/skevetter/picolayer/main/install.sh | \
+    PICOLAYER_VERSION=v0.5.5 PICOLAYER_INSTALL_DIR="$HOME/.local/bin" bash
+```
+
+### From binary
+
+Download the latest release for your platform from the [releases page](https://github.com/skevetter/picolayer/releases).
 
 ## Usage
 
