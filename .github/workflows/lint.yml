@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: megalinter
-        uses: oxsecurity/megalinter@0e3ce9b9c8c10effb9b269509cc47ca17cae31c7 # v9
+        uses: oxsecurity/megalinter@ef3e84b8b836d76db562d0f3ed7da61e8fd538bc # v9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_ALL_CODEBASE: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
