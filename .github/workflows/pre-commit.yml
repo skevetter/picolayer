@@ -15,7 +15,7 @@ jobs:
 
       - uses: biomejs/setup-biome@4c91541eaada48f67d7dbd7833600ce162b68f51 # v2
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           cache: pip
           python-version: 3.x
